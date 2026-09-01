@@ -519,9 +519,10 @@ function Dashboard() {
                 sendStorageCommand({
                   action: "PLAY",
                   videoId: current?.videoId ?? "",
-                  title: current?.title,
+                  title: current?.title ?? "",
                   timestamp: Date.now(),
                 });
+
               }}
               disabled={!current}
             >
