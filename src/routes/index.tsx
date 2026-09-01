@@ -21,26 +21,26 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import {
+  COMMAND_STORAGE,
+  EVENT_STORAGE,
+  VOLUME_STORAGE,
   createTvChannel,
   fetchVideoTitle,
   formatTime,
   parseVideoId,
   searchYouTube,
   type QueueTrack,
+  type TvCommand,
+  type TvEvent,
   type TvMessage,
   type YouTubeSearchResult,
 } from "@/lib/tv-channel";
 
 const API_KEY_STORAGE = "youtube_api_key";
-const COMMAND_STORAGE = "tv_player_command";
-const VOLUME_STORAGE = "tv_player_volume";
-
-type TvCommand =
-  | { action: "PLAY"; videoId: string; title?: string; timestamp: number }
-  | { action: "PAUSE"; timestamp: number }
-  | { action: "RESTART"; timestamp: number }
-  | { action: "CLEAR"; timestamp: number };
+const AUTONEXT_STORAGE = "tv_auto_next";
 
 function sendStorageCommand(cmd: TvCommand) {
   try {
@@ -57,6 +57,7 @@ function sendStorageVolume(volume: number) {
     /* almacenamiento no disponible */
   }
 }
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -99,6 +100,8 @@ function Dashboard() {
   const [results, setResults] = useState<YouTubeSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [autoNext, setAutoNext] = useState(true);
+  const [tvOnline, setTvOnline] = useState(false);
 
   const send = useCallback((message: TvMessage) => {
     console.log("[TV channel] enviando", message);
@@ -109,16 +112,53 @@ function Dashboard() {
   const isPlayingRef = useRef(false);
   const volumeRef = useRef(volume);
   const queueRef = useRef<QueueTrack[]>([]);
+  const autoNextRef = useRef(autoNext);
+  const lastAliveRef = useRef(0);
   currentRef.current = current;
   isPlayingRef.current = isPlaying;
   volumeRef.current = volume;
   queueRef.current = queue;
+  autoNextRef.current = autoNext;
 
   useEffect(() => {
     const saved = window.localStorage.getItem(API_KEY_STORAGE) ?? "";
     setApiKey(saved);
     setKeyDraft(saved);
+    const savedAuto = window.localStorage.getItem(AUTONEXT_STORAGE);
+    if (savedAuto != null) setAutoNext(savedAuto === "1");
   }, []);
+
+  // Eventos que llegan desde la ventana de TV (latido + fin de canción)
+  useEffect(() => {
+    const handleEvent = (ev: TvEvent) => {
+      lastAliveRef.current = ev.timestamp;
+      setTvOnline(true);
+      setDuration(ev.duration);
+      setElapsed(ev.currentTime);
+      setIsPlaying(ev.playing);
+      if (ev.kind === "ended" && autoNextRef.current) {
+        setStatus("Canción terminada. Pasando a la siguiente…");
+        window.setTimeout(() => nextRef.current(), 600);
+      }
+    };
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== EVENT_STORAGE || !e.newValue) return;
+      try {
+        handleEvent(JSON.parse(e.newValue) as TvEvent);
+      } catch {
+        /* json inválido */
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    const timer = window.setInterval(() => {
+      setTvOnline(Date.now() - lastAliveRef.current < 4000);
+    }, 2000);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.clearInterval(timer);
+    };
+  }, []);
+
 
   useEffect(() => {
     const channel = createTvChannel();
@@ -129,10 +169,13 @@ function Dashboard() {
       const data = event.data;
       if (data.type !== "state") console.log("[TV channel] recibido", data);
       if (data.type === "state") {
+        lastAliveRef.current = Date.now();
+        setTvOnline(true);
         setDuration(data.duration);
         setElapsed(data.currentTime);
         setIsPlaying(data.playing);
       }
+
       if (data.type === "embed_error") {
         // Video bloqueado para embeber: avisar y saltar a la siguiente canción
         const msg =
@@ -172,6 +215,11 @@ function Dashboard() {
   const tvWindowRef = useRef<Window | null>(null);
 
   const openTv = useCallback(() => {
+    const existing = tvWindowRef.current;
+    if (existing && !existing.closed) {
+      existing.focus();
+      return;
+    }
     const win = window.open("/player", "TVPlayer", "width=1280,height=720");
     if (win) {
       tvWindowRef.current = win;
@@ -179,12 +227,18 @@ function Dashboard() {
     }
   }, []);
 
-  /** Abre la TV automáticamente si no hay ninguna ventana activa. */
+  /**
+   * Abre la TV solo si realmente no hay ninguna pantalla activa.
+   * Se usa el latido (heartbeat) de la TV para detectar ventanas abiertas
+   * aunque no las haya abierto esta pestaña.
+   */
   const ensureTvOpen = useCallback(() => {
-    if (!tvWindowRef.current || tvWindowRef.current.closed) {
-      openTv();
-    }
+    const aliveRecently = Date.now() - lastAliveRef.current < 5000;
+    const ownWindowOpen = !!tvWindowRef.current && !tvWindowRef.current.closed;
+    if (aliveRecently || ownWindowOpen) return;
+    openTv();
   }, [openTv]);
+
 
   const playTrack = useCallback(
     (track: QueueTrack) => {
@@ -353,6 +407,10 @@ function Dashboard() {
           </div>
         </header>
 
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+        <div className="min-w-0 space-y-6">
+
+
         <section className="panel-surface rounded-2xl p-5">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
             Buscar en YouTube
@@ -462,6 +520,13 @@ function Dashboard() {
               onClick={() => {
                 setIsPlaying(true);
                 send({ type: "play" });
+                sendStorageCommand({
+                  action: "PLAY",
+                  videoId: current?.videoId ?? "",
+                  title: current?.title ?? "",
+                  timestamp: Date.now(),
+                });
+
               }}
               disabled={!current}
             >
@@ -472,6 +537,7 @@ function Dashboard() {
               onClick={() => {
                 setIsPlaying(false);
                 send({ type: "pause" });
+                sendStorageCommand({ action: "PAUSE", timestamp: Date.now() });
               }}
               disabled={!current}
             >
@@ -482,13 +548,33 @@ function Dashboard() {
             </Button>
             <Button
               variant="outline"
-              onClick={() => send({ type: "restart" })}
+              onClick={() => {
+                send({ type: "restart" });
+                sendStorageCommand({ action: "RESTART", timestamp: Date.now() });
+              }}
               disabled={!current}
             >
               <RotateCcw className="size-4" /> Reiniciar
             </Button>
             <span className="ml-auto text-xs text-muted-foreground">
               {isPlaying ? "● En reproducción" : "❚❚ En pausa"}
+            </span>
+          </div>
+
+          <div className="mt-4 flex items-center gap-3 rounded-xl border border-border p-3">
+            <Switch
+              id="auto-next"
+              checked={autoNext}
+              onCheckedChange={(checked) => {
+                setAutoNext(checked);
+                window.localStorage.setItem(AUTONEXT_STORAGE, checked ? "1" : "0");
+              }}
+            />
+            <Label htmlFor="auto-next" className="text-sm">
+              Pasar automáticamente a la siguiente canción
+            </Label>
+            <span className="ml-auto text-xs text-muted-foreground">
+              TV: {tvOnline ? "conectada" : "desconectada"}
             </span>
           </div>
 
@@ -502,120 +588,131 @@ function Dashboard() {
                 const next = v[0] ?? 0;
                 setVolume(next);
                 send({ type: "volume", volume: next });
+                sendStorageVolume(next);
               }}
               className="max-w-sm"
+
             />
             <span className="w-10 font-mono text-sm text-muted-foreground">{volume}</span>
           </div>
         </section>
 
-        <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
-          <section className="panel-surface rounded-2xl p-5">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-              Cola de reproducción
-            </h2>
-            <form
-              className="mt-3 flex flex-col gap-2 sm:flex-row"
-              onSubmit={(e) => {
-                e.preventDefault();
-                void addToQueue();
-              }}
-            >
-              <Input
-                value={urlInput}
-                onChange={(e) => setUrlInput(e.target.value)}
-                placeholder="Pega la URL de YouTube o el ID del video"
-                aria-label="URL o ID de YouTube"
-              />
-              <Button type="submit" disabled={adding}>
-                <Plus className="size-4" />
-                {adding ? "Agregando..." : "Agregar a la cola"}
+        <section className="panel-surface rounded-2xl p-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            Mensaje en pantalla
+          </h2>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Aparece como overlay en la TV, por ejemplo: “Turno de Juan”.
+          </p>
+          <form
+            className="mt-3 space-y-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const text = screenMessage.trim();
+              send({ type: "message", text });
+              sendStorageCommand({ action: "MESSAGE", text, timestamp: Date.now() });
+              setStatus(text ? `Mensaje enviado: «${text}»` : "Mensaje limpiado.");
+            }}
+          >
+            <Input
+              value={screenMessage}
+              onChange={(e) => setScreenMessage(e.target.value)}
+              placeholder="Turno de Juan"
+              aria-label="Mensaje para la pantalla de TV"
+            />
+            <div className="flex gap-2">
+              <Button type="submit" className="flex-1">
+                <Send className="size-4" /> Enviar a la TV
               </Button>
-            </form>
-            {status && <p className="mt-2 text-xs text-muted-foreground">{status}</p>}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setScreenMessage("");
+                  send({ type: "message", text: "" });
+                  sendStorageCommand({
+                    action: "MESSAGE",
+                    text: "",
+                    timestamp: Date.now(),
+                  });
+                }}
+              >
+                Limpiar
+              </Button>
+            </div>
+          </form>
+        </section>
+        </div>
 
-            <ul className="mt-4 space-y-2">
-              {queue.length === 0 && (
-                <li className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                  La cola está vacía. Agrega la primera canción.
-                </li>
-              )}
-              {queue.map((track, index) => (
-                <li
-                  key={track.id}
-                  className="flex items-center gap-3 rounded-xl border border-border bg-card px-3 py-2"
+        <aside className="panel-surface h-fit rounded-2xl p-5 lg:sticky lg:top-6">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            Cola de reproducción
+          </h2>
+          <form
+            className="mt-3 flex flex-col gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void addToQueue();
+            }}
+          >
+            <Input
+              value={urlInput}
+              onChange={(e) => setUrlInput(e.target.value)}
+              placeholder="Pega la URL de YouTube o el ID del video"
+              aria-label="URL o ID de YouTube"
+            />
+            <Button type="submit" disabled={adding}>
+              <Plus className="size-4" />
+              {adding ? "Agregando..." : "Agregar a la cola"}
+            </Button>
+          </form>
+          {status && <p className="mt-2 text-xs text-muted-foreground">{status}</p>}
+
+          <ul className="mt-4 space-y-2 lg:max-h-[60vh] lg:overflow-y-auto">
+            {queue.length === 0 && (
+              <li className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                La cola está vacía. Agrega la primera canción.
+              </li>
+            )}
+            {queue.map((track, index) => (
+              <li
+                key={track.id}
+                className="flex items-center gap-1 rounded-xl border border-border bg-card px-2 py-2"
+              >
+                <span className="w-6 shrink-0 text-center font-mono text-sm text-primary">
+                  {index + 1}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-sm">{track.title}</span>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  aria-label="Subir"
+                  onClick={() => move(index, -1)}
                 >
-                  <span className="w-6 shrink-0 text-center font-mono text-sm text-primary">
-                    {index + 1}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-sm">{track.title}</span>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    aria-label="Subir"
-                    onClick={() => move(index, -1)}
-                  >
-                    <ArrowUp className="size-4" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    aria-label="Bajar"
-                    onClick={() => move(index, 1)}
-                  >
-                    <ArrowDown className="size-4" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    aria-label="Eliminar"
-                    onClick={() => remove(track.id)}
-                  >
-                    <Trash2 className="size-4 text-destructive" />
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          <section className="panel-surface h-fit rounded-2xl p-5">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-              Mensaje en pantalla
-            </h2>
-            <p className="mt-2 text-xs text-muted-foreground">
-              Aparece como overlay en la TV, por ejemplo: “Turno de Juan”.
-            </p>
-            <form
-              className="mt-3 space-y-2"
-              onSubmit={(e) => {
-                e.preventDefault();
-                send({ type: "message", text: screenMessage.trim() });
-              }}
-            >
-              <Input
-                value={screenMessage}
-                onChange={(e) => setScreenMessage(e.target.value)}
-                placeholder="Turno de Juan"
-                aria-label="Mensaje para la pantalla de TV"
-              />
-              <div className="flex gap-2">
-                <Button type="submit" className="flex-1">
-                  <Send className="size-4" /> Enviar a la TV
+                  <ArrowUp className="size-4" />
                 </Button>
                 <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setScreenMessage("");
-                    send({ type: "message", text: "" });
-                  }}
+                  size="icon"
+                  variant="ghost"
+                  aria-label="Bajar"
+                  onClick={() => move(index, 1)}
                 >
-                  Limpiar
+                  <ArrowDown className="size-4" />
                 </Button>
-              </div>
-            </form>
-          </section>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  aria-label="Eliminar"
+                  onClick={() => remove(track.id)}
+                >
+                  <Trash2 className="size-4 text-destructive" />
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </aside>
         </div>
+
       </div>
 
       {settingsOpen ? (

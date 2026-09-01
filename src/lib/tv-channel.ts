@@ -1,5 +1,27 @@
 export const TV_CHANNEL_NAME = "youtube_tv_channel";
 
+/** Claves compartidas de localStorage para sincronizar consola <-> TV. */
+export const COMMAND_STORAGE = "tv_player_command";
+export const VOLUME_STORAGE = "tv_player_volume";
+export const EVENT_STORAGE = "tv_player_event";
+
+export type TvCommand =
+  | { action: "PLAY"; videoId: string; title?: string; timestamp: number }
+  | { action: "PAUSE"; timestamp: number }
+  | { action: "RESTART"; timestamp: number }
+  | { action: "MESSAGE"; text: string; timestamp: number }
+  | { action: "CLEAR"; timestamp: number };
+
+/** Eventos que la TV envía de vuelta a la consola. */
+export type TvEvent = {
+  kind: "heartbeat" | "ended";
+  duration: number;
+  currentTime: number;
+  playing: boolean;
+  timestamp: number;
+};
+
+
 export type QueueTrack = {
   id: string;
   videoId: string;

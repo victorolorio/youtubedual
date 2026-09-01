@@ -1,7 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { createTvChannel, type TvMessage } from "@/lib/tv-channel";
+import {
+  COMMAND_STORAGE,
+  EVENT_STORAGE,
+  VOLUME_STORAGE,
+  createTvChannel,
+  type TvCommand,
+  type TvEvent,
+  type TvMessage,
+} from "@/lib/tv-channel";
+
 
 export const Route = createFileRoute("/player")({
   head: () => ({
@@ -24,17 +33,9 @@ export const Route = createFileRoute("/player")({
   component: PlayerScreen,
 });
 
-const COMMAND_STORAGE = "tv_player_command";
-const VOLUME_STORAGE = "tv_player_volume";
-
 const IFRAME_ALLOW =
   "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
 
-type TvCommand =
-  | { action: "PLAY"; videoId: string; title?: string; timestamp: number }
-  | { action: "PAUSE"; timestamp: number }
-  | { action: "RESTART"; timestamp: number }
-  | { action: "CLEAR"; timestamp: number };
 
 function readCommand(): TvCommand | null {
   try {
@@ -52,6 +53,27 @@ function PlayerScreen() {
   const videoIdRef = useRef("");
   const titleRef = useRef("");
   const progressRef = useRef({ duration: 0, currentTime: 0, playing: false });
+  const endedSentRef = useRef(false);
+
+  /** Escribe un evento para la consola (funciona entre ventanas vía localStorage). */
+  const writeEvent = useCallback((kind: TvEvent["kind"]) => {
+    try {
+      window.localStorage.setItem(
+        EVENT_STORAGE,
+        JSON.stringify({
+          kind,
+          duration: progressRef.current.duration,
+          currentTime: progressRef.current.currentTime,
+          playing: progressRef.current.playing,
+          timestamp: Date.now(),
+        } satisfies TvEvent),
+      );
+    } catch {
+      /* almacenamiento no disponible */
+    }
+  }, []);
+
+
 
   const [videoId, setVideoId] = useState("");
   const [title, setTitle] = useState("");
@@ -76,9 +98,11 @@ function PlayerScreen() {
           if (cmd.videoId && cmd.videoId !== videoIdRef.current) {
             videoIdRef.current = cmd.videoId;
             titleRef.current = cmd.title ?? "";
+            endedSentRef.current = false;
             setVideoId(cmd.videoId);
             setTitle(cmd.title ?? "");
             setEmbedError(null);
+
           } else {
             // Mismo video: reanudar
             sendIframeCommand("playVideo");
@@ -92,6 +116,9 @@ function PlayerScreen() {
           sendIframeCommand("seekTo", [0, true]);
           sendIframeCommand("playVideo");
           break;
+        case "MESSAGE":
+          setMessage(cmd.text);
+          break;
         case "CLEAR":
           sendIframeCommand("pauseVideo");
           videoIdRef.current = "";
@@ -99,6 +126,7 @@ function PlayerScreen() {
           setVideoId("");
           setTitle("");
           break;
+
       }
     },
     [sendIframeCommand],
@@ -209,8 +237,17 @@ function PlayerScreen() {
           if (typeof duration === "number") progressRef.current.duration = duration;
           if (typeof playerState === "number") {
             progressRef.current.playing = playerState === 1;
-            if (playerState === 1) setNeedsAudioClick(false);
+            if (playerState === 1) {
+              setNeedsAudioClick(false);
+              endedSentRef.current = false;
+            }
+            // 0 = ENDED -> avisar a la consola (auto-siguiente)
+            if (playerState === 0 && !endedSentRef.current && videoIdRef.current) {
+              endedSentRef.current = true;
+              writeEvent("ended");
+            }
           }
+
         }
         if (data.event === "onError" && typeof data.info === "number") {
           const code = data.info;
@@ -233,17 +270,17 @@ function PlayerScreen() {
     };
     window.addEventListener("message", onMessage);
 
-    // 5) Reportar progreso al panel cada segundo
+    // 5) Reportar progreso + latido al panel cada segundo
     const interval = window.setInterval(() => {
-      const ch = channelRef.current;
-      if (!ch) return;
-      ch.postMessage({
+      writeEvent("heartbeat");
+      channelRef.current?.postMessage({
         type: "state",
         duration: progressRef.current.duration,
         currentTime: progressRef.current.currentTime,
         playing: progressRef.current.playing,
       } satisfies TvMessage);
     }, 1000);
+
 
     return () => {
       window.removeEventListener("storage", onStorage);
@@ -255,7 +292,7 @@ function PlayerScreen() {
       }
       channelRef.current = null;
     };
-  }, [applyCommand, sendIframeCommand]);
+  }, [applyCommand, sendIframeCommand, writeEvent]);
 
   // Activar el canal de datos del iframe cada vez que cambia el video
   useEffect(() => {
