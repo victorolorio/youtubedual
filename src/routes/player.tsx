@@ -47,6 +47,18 @@ function readCommand(): TvCommand | null {
   }
 }
 
+/** Lee el mensaje en pantalla guardado por la consola. */
+function readStoredMessage(): string {
+  try {
+    const raw = window.localStorage.getItem(MESSAGE_STORAGE);
+    if (!raw) return "";
+    const parsed = JSON.parse(raw) as { text?: string };
+    return parsed.text ?? "";
+  } catch {
+    return "";
+  }
+}
+
 function PlayerScreen() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const channelRef = useRef<BroadcastChannel | null>(null);
