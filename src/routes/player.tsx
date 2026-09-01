@@ -98,9 +98,11 @@ function PlayerScreen() {
           if (cmd.videoId && cmd.videoId !== videoIdRef.current) {
             videoIdRef.current = cmd.videoId;
             titleRef.current = cmd.title ?? "";
+            endedSentRef.current = false;
             setVideoId(cmd.videoId);
             setTitle(cmd.title ?? "");
             setEmbedError(null);
+
           } else {
             // Mismo video: reanudar
             sendIframeCommand("playVideo");
