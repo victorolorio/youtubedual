@@ -268,17 +268,17 @@ function PlayerScreen() {
     };
     window.addEventListener("message", onMessage);
 
-    // 5) Reportar progreso al panel cada segundo
+    // 5) Reportar progreso + latido al panel cada segundo
     const interval = window.setInterval(() => {
-      const ch = channelRef.current;
-      if (!ch) return;
-      ch.postMessage({
+      writeEvent("heartbeat");
+      channelRef.current?.postMessage({
         type: "state",
         duration: progressRef.current.duration,
         currentTime: progressRef.current.currentTime,
         playing: progressRef.current.playing,
       } satisfies TvMessage);
     }, 1000);
+
 
     return () => {
       window.removeEventListener("storage", onStorage);
