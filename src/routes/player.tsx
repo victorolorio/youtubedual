@@ -33,17 +33,9 @@ export const Route = createFileRoute("/player")({
   component: PlayerScreen,
 });
 
-const COMMAND_STORAGE = "tv_player_command";
-const VOLUME_STORAGE = "tv_player_volume";
-
 const IFRAME_ALLOW =
   "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
 
-type TvCommand =
-  | { action: "PLAY"; videoId: string; title?: string; timestamp: number }
-  | { action: "PAUSE"; timestamp: number }
-  | { action: "RESTART"; timestamp: number }
-  | { action: "CLEAR"; timestamp: number };
 
 function readCommand(): TvCommand | null {
   try {
