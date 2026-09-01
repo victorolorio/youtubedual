@@ -1,7 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { createTvChannel, type TvMessage } from "@/lib/tv-channel";
+import {
+  COMMAND_STORAGE,
+  EVENT_STORAGE,
+  VOLUME_STORAGE,
+  createTvChannel,
+  type TvCommand,
+  type TvEvent,
+  type TvMessage,
+} from "@/lib/tv-channel";
+
 
 export const Route = createFileRoute("/player")({
   head: () => ({
