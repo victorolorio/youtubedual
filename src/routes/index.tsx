@@ -593,113 +593,122 @@ function Dashboard() {
           </div>
         </section>
 
-        <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
-          <section className="panel-surface rounded-2xl p-5">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-              Cola de reproducción
-            </h2>
-            <form
-              className="mt-3 flex flex-col gap-2 sm:flex-row"
-              onSubmit={(e) => {
-                e.preventDefault();
-                void addToQueue();
-              }}
-            >
-              <Input
-                value={urlInput}
-                onChange={(e) => setUrlInput(e.target.value)}
-                placeholder="Pega la URL de YouTube o el ID del video"
-                aria-label="URL o ID de YouTube"
-              />
-              <Button type="submit" disabled={adding}>
-                <Plus className="size-4" />
-                {adding ? "Agregando..." : "Agregar a la cola"}
+        <section className="panel-surface rounded-2xl p-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            Mensaje en pantalla
+          </h2>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Aparece como overlay en la TV, por ejemplo: “Turno de Juan”.
+          </p>
+          <form
+            className="mt-3 space-y-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const text = screenMessage.trim();
+              send({ type: "message", text });
+              sendStorageCommand({ action: "MESSAGE", text, timestamp: Date.now() });
+              setStatus(text ? `Mensaje enviado: «${text}»` : "Mensaje limpiado.");
+            }}
+          >
+            <Input
+              value={screenMessage}
+              onChange={(e) => setScreenMessage(e.target.value)}
+              placeholder="Turno de Juan"
+              aria-label="Mensaje para la pantalla de TV"
+            />
+            <div className="flex gap-2">
+              <Button type="submit" className="flex-1">
+                <Send className="size-4" /> Enviar a la TV
               </Button>
-            </form>
-            {status && <p className="mt-2 text-xs text-muted-foreground">{status}</p>}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setScreenMessage("");
+                  send({ type: "message", text: "" });
+                  sendStorageCommand({
+                    action: "MESSAGE",
+                    text: "",
+                    timestamp: Date.now(),
+                  });
+                }}
+              >
+                Limpiar
+              </Button>
+            </div>
+          </form>
+        </section>
+        </div>
 
-            <ul className="mt-4 space-y-2">
-              {queue.length === 0 && (
-                <li className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                  La cola está vacía. Agrega la primera canción.
-                </li>
-              )}
-              {queue.map((track, index) => (
-                <li
-                  key={track.id}
-                  className="flex items-center gap-3 rounded-xl border border-border bg-card px-3 py-2"
+        <aside className="panel-surface h-fit rounded-2xl p-5 lg:sticky lg:top-6">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            Cola de reproducción
+          </h2>
+          <form
+            className="mt-3 flex flex-col gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void addToQueue();
+            }}
+          >
+            <Input
+              value={urlInput}
+              onChange={(e) => setUrlInput(e.target.value)}
+              placeholder="Pega la URL de YouTube o el ID del video"
+              aria-label="URL o ID de YouTube"
+            />
+            <Button type="submit" disabled={adding}>
+              <Plus className="size-4" />
+              {adding ? "Agregando..." : "Agregar a la cola"}
+            </Button>
+          </form>
+          {status && <p className="mt-2 text-xs text-muted-foreground">{status}</p>}
+
+          <ul className="mt-4 space-y-2 lg:max-h-[60vh] lg:overflow-y-auto">
+            {queue.length === 0 && (
+              <li className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                La cola está vacía. Agrega la primera canción.
+              </li>
+            )}
+            {queue.map((track, index) => (
+              <li
+                key={track.id}
+                className="flex items-center gap-1 rounded-xl border border-border bg-card px-2 py-2"
+              >
+                <span className="w-6 shrink-0 text-center font-mono text-sm text-primary">
+                  {index + 1}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-sm">{track.title}</span>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  aria-label="Subir"
+                  onClick={() => move(index, -1)}
                 >
-                  <span className="w-6 shrink-0 text-center font-mono text-sm text-primary">
-                    {index + 1}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-sm">{track.title}</span>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    aria-label="Subir"
-                    onClick={() => move(index, -1)}
-                  >
-                    <ArrowUp className="size-4" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    aria-label="Bajar"
-                    onClick={() => move(index, 1)}
-                  >
-                    <ArrowDown className="size-4" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    aria-label="Eliminar"
-                    onClick={() => remove(track.id)}
-                  >
-                    <Trash2 className="size-4 text-destructive" />
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          <section className="panel-surface h-fit rounded-2xl p-5">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-              Mensaje en pantalla
-            </h2>
-            <p className="mt-2 text-xs text-muted-foreground">
-              Aparece como overlay en la TV, por ejemplo: “Turno de Juan”.
-            </p>
-            <form
-              className="mt-3 space-y-2"
-              onSubmit={(e) => {
-                e.preventDefault();
-                send({ type: "message", text: screenMessage.trim() });
-              }}
-            >
-              <Input
-                value={screenMessage}
-                onChange={(e) => setScreenMessage(e.target.value)}
-                placeholder="Turno de Juan"
-                aria-label="Mensaje para la pantalla de TV"
-              />
-              <div className="flex gap-2">
-                <Button type="submit" className="flex-1">
-                  <Send className="size-4" /> Enviar a la TV
+                  <ArrowUp className="size-4" />
                 </Button>
                 <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setScreenMessage("");
-                    send({ type: "message", text: "" });
-                  }}
+                  size="icon"
+                  variant="ghost"
+                  aria-label="Bajar"
+                  onClick={() => move(index, 1)}
                 >
-                  Limpiar
+                  <ArrowDown className="size-4" />
                 </Button>
-              </div>
-            </form>
-          </section>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  aria-label="Eliminar"
+                  onClick={() => remove(track.id)}
+                >
+                  <Trash2 className="size-4 text-destructive" />
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </aside>
         </div>
+
       </div>
 
       {settingsOpen ? (
