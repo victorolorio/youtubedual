@@ -176,7 +176,11 @@ function PlayerScreen() {
         const v = Number(e.newValue);
         if (Number.isFinite(v)) sendIframeCommand("setVolume", [v]);
       }
+      if (e.key === MESSAGE_STORAGE) {
+        setMessage(readStoredMessage());
+      }
     };
+    setMessage(readStoredMessage());
     window.addEventListener("storage", onStorage);
 
     // 3) Respaldo por BroadcastChannel (mensajes del panel)
