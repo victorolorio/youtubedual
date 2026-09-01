@@ -516,6 +516,12 @@ function Dashboard() {
               onClick={() => {
                 setIsPlaying(true);
                 send({ type: "play" });
+                sendStorageCommand({
+                  action: "PLAY",
+                  videoId: current?.videoId ?? "",
+                  title: current?.title,
+                  timestamp: Date.now(),
+                });
               }}
               disabled={!current}
             >
@@ -526,6 +532,7 @@ function Dashboard() {
               onClick={() => {
                 setIsPlaying(false);
                 send({ type: "pause" });
+                sendStorageCommand({ action: "PAUSE", timestamp: Date.now() });
               }}
               disabled={!current}
             >
@@ -536,13 +543,33 @@ function Dashboard() {
             </Button>
             <Button
               variant="outline"
-              onClick={() => send({ type: "restart" })}
+              onClick={() => {
+                send({ type: "restart" });
+                sendStorageCommand({ action: "RESTART", timestamp: Date.now() });
+              }}
               disabled={!current}
             >
               <RotateCcw className="size-4" /> Reiniciar
             </Button>
             <span className="ml-auto text-xs text-muted-foreground">
               {isPlaying ? "● En reproducción" : "❚❚ En pausa"}
+            </span>
+          </div>
+
+          <div className="mt-4 flex items-center gap-3 rounded-xl border border-border p-3">
+            <Switch
+              id="auto-next"
+              checked={autoNext}
+              onCheckedChange={(checked) => {
+                setAutoNext(checked);
+                window.localStorage.setItem(AUTONEXT_STORAGE, checked ? "1" : "0");
+              }}
+            />
+            <Label htmlFor="auto-next" className="text-sm">
+              Pasar automáticamente a la siguiente canción
+            </Label>
+            <span className="ml-auto text-xs text-muted-foreground">
+              TV: {tvOnline ? "conectada" : "desconectada"}
             </span>
           </div>
 
@@ -556,8 +583,10 @@ function Dashboard() {
                 const next = v[0] ?? 0;
                 setVolume(next);
                 send({ type: "volume", volume: next });
+                sendStorageVolume(next);
               }}
               className="max-w-sm"
+
             />
             <span className="w-10 font-mono text-sm text-muted-foreground">{volume}</span>
           </div>
