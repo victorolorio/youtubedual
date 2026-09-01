@@ -53,6 +53,27 @@ function PlayerScreen() {
   const videoIdRef = useRef("");
   const titleRef = useRef("");
   const progressRef = useRef({ duration: 0, currentTime: 0, playing: false });
+  const endedSentRef = useRef(false);
+
+  /** Escribe un evento para la consola (funciona entre ventanas vía localStorage). */
+  const writeEvent = useCallback((kind: TvEvent["kind"]) => {
+    try {
+      window.localStorage.setItem(
+        EVENT_STORAGE,
+        JSON.stringify({
+          kind,
+          duration: progressRef.current.duration,
+          currentTime: progressRef.current.currentTime,
+          playing: progressRef.current.playing,
+          timestamp: Date.now(),
+        } satisfies TvEvent),
+      );
+    } catch {
+      /* almacenamiento no disponible */
+    }
+  }, []);
+
+
 
   const [videoId, setVideoId] = useState("");
   const [title, setTitle] = useState("");
