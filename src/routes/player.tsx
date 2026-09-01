@@ -93,6 +93,9 @@ function PlayerScreen() {
           sendIframeCommand("seekTo", [0, true]);
           sendIframeCommand("playVideo");
           break;
+        case "MESSAGE":
+          setMessage(cmd.text);
+          break;
         case "CLEAR":
           sendIframeCommand("pauseVideo");
           videoIdRef.current = "";
@@ -100,6 +103,7 @@ function PlayerScreen() {
           setVideoId("");
           setTitle("");
           break;
+
       }
     },
     [sendIframeCommand],
