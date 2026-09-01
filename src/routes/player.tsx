@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   COMMAND_STORAGE,
   EVENT_STORAGE,
+  MESSAGE_STORAGE,
   VOLUME_STORAGE,
   createTvChannel,
   type TvCommand,
