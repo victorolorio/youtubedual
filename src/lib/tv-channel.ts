@@ -4,6 +4,8 @@ export const TV_CHANNEL_NAME = "youtube_tv_channel";
 export const COMMAND_STORAGE = "tv_player_command";
 export const VOLUME_STORAGE = "tv_player_volume";
 export const EVENT_STORAGE = "tv_player_event";
+/** Canal dedicado para el mensaje en pantalla (independiente de los comandos). */
+export const MESSAGE_STORAGE = "tv_player_message";
 
 export type TvCommand =
   | { action: "PLAY"; videoId: string; title?: string; timestamp: number }
