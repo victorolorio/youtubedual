@@ -407,6 +407,10 @@ function Dashboard() {
           </div>
         </header>
 
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+        <div className="min-w-0 space-y-6">
+
+
         <section className="panel-surface rounded-2xl p-5">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
             Buscar en YouTube
