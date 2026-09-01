@@ -290,7 +290,7 @@ function PlayerScreen() {
       }
       channelRef.current = null;
     };
-  }, [applyCommand, sendIframeCommand]);
+  }, [applyCommand, sendIframeCommand, writeEvent]);
 
   // Activar el canal de datos del iframe cada vez que cambia el video
   useEffect(() => {
