@@ -100,6 +100,8 @@ function Dashboard() {
   const [results, setResults] = useState<YouTubeSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [autoNext, setAutoNext] = useState(true);
+  const [tvOnline, setTvOnline] = useState(false);
 
   const send = useCallback((message: TvMessage) => {
     console.log("[TV channel] enviando", message);
@@ -110,16 +112,53 @@ function Dashboard() {
   const isPlayingRef = useRef(false);
   const volumeRef = useRef(volume);
   const queueRef = useRef<QueueTrack[]>([]);
+  const autoNextRef = useRef(autoNext);
+  const lastAliveRef = useRef(0);
   currentRef.current = current;
   isPlayingRef.current = isPlaying;
   volumeRef.current = volume;
   queueRef.current = queue;
+  autoNextRef.current = autoNext;
 
   useEffect(() => {
     const saved = window.localStorage.getItem(API_KEY_STORAGE) ?? "";
     setApiKey(saved);
     setKeyDraft(saved);
+    const savedAuto = window.localStorage.getItem(AUTONEXT_STORAGE);
+    if (savedAuto != null) setAutoNext(savedAuto === "1");
   }, []);
+
+  // Eventos que llegan desde la ventana de TV (latido + fin de canción)
+  useEffect(() => {
+    const handleEvent = (ev: TvEvent) => {
+      lastAliveRef.current = ev.timestamp;
+      setTvOnline(true);
+      setDuration(ev.duration);
+      setElapsed(ev.currentTime);
+      setIsPlaying(ev.playing);
+      if (ev.kind === "ended" && autoNextRef.current) {
+        setStatus("Canción terminada. Pasando a la siguiente…");
+        window.setTimeout(() => nextRef.current(), 600);
+      }
+    };
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== EVENT_STORAGE || !e.newValue) return;
+      try {
+        handleEvent(JSON.parse(e.newValue) as TvEvent);
+      } catch {
+        /* json inválido */
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    const timer = window.setInterval(() => {
+      setTvOnline(Date.now() - lastAliveRef.current < 4000);
+    }, 2000);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.clearInterval(timer);
+    };
+  }, []);
+
 
   useEffect(() => {
     const channel = createTvChannel();
