@@ -215,6 +215,11 @@ function Dashboard() {
   const tvWindowRef = useRef<Window | null>(null);
 
   const openTv = useCallback(() => {
+    const existing = tvWindowRef.current;
+    if (existing && !existing.closed) {
+      existing.focus();
+      return;
+    }
     const win = window.open("/player", "TVPlayer", "width=1280,height=720");
     if (win) {
       tvWindowRef.current = win;
@@ -222,12 +227,18 @@ function Dashboard() {
     }
   }, []);
 
-  /** Abre la TV automáticamente si no hay ninguna ventana activa. */
+  /**
+   * Abre la TV solo si realmente no hay ninguna pantalla activa.
+   * Se usa el latido (heartbeat) de la TV para detectar ventanas abiertas
+   * aunque no las haya abierto esta pestaña.
+   */
   const ensureTvOpen = useCallback(() => {
-    if (!tvWindowRef.current || tvWindowRef.current.closed) {
-      openTv();
-    }
+    const aliveRecently = Date.now() - lastAliveRef.current < 5000;
+    const ownWindowOpen = !!tvWindowRef.current && !tvWindowRef.current.closed;
+    if (aliveRecently || ownWindowOpen) return;
+    openTv();
   }, [openTv]);
+
 
   const playTrack = useCallback(
     (track: QueueTrack) => {
