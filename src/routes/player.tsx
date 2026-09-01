@@ -214,8 +214,17 @@ function PlayerScreen() {
           if (typeof duration === "number") progressRef.current.duration = duration;
           if (typeof playerState === "number") {
             progressRef.current.playing = playerState === 1;
-            if (playerState === 1) setNeedsAudioClick(false);
+            if (playerState === 1) {
+              setNeedsAudioClick(false);
+              endedSentRef.current = false;
+            }
+            // 0 = ENDED -> avisar a la consola (auto-siguiente)
+            if (playerState === 0 && !endedSentRef.current && videoIdRef.current) {
+              endedSentRef.current = true;
+              writeEvent("ended");
+            }
           }
+
         }
         if (data.event === "onError" && typeof data.info === "number") {
           const code = data.info;
