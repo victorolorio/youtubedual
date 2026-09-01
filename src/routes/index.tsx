@@ -169,10 +169,13 @@ function Dashboard() {
       const data = event.data;
       if (data.type !== "state") console.log("[TV channel] recibido", data);
       if (data.type === "state") {
+        lastAliveRef.current = Date.now();
+        setTvOnline(true);
         setDuration(data.duration);
         setElapsed(data.currentTime);
         setIsPlaying(data.playing);
       }
+
       if (data.type === "embed_error") {
         // Video bloqueado para embeber: avisar y saltar a la siguiente canción
         const msg =
