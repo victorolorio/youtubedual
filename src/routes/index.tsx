@@ -21,26 +21,26 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import {
+  COMMAND_STORAGE,
+  EVENT_STORAGE,
+  VOLUME_STORAGE,
   createTvChannel,
   fetchVideoTitle,
   formatTime,
   parseVideoId,
   searchYouTube,
   type QueueTrack,
+  type TvCommand,
+  type TvEvent,
   type TvMessage,
   type YouTubeSearchResult,
 } from "@/lib/tv-channel";
 
 const API_KEY_STORAGE = "youtube_api_key";
-const COMMAND_STORAGE = "tv_player_command";
-const VOLUME_STORAGE = "tv_player_volume";
-
-type TvCommand =
-  | { action: "PLAY"; videoId: string; title?: string; timestamp: number }
-  | { action: "PAUSE"; timestamp: number }
-  | { action: "RESTART"; timestamp: number }
-  | { action: "CLEAR"; timestamp: number };
+const AUTONEXT_STORAGE = "tv_auto_next";
 
 function sendStorageCommand(cmd: TvCommand) {
   try {
@@ -57,6 +57,7 @@ function sendStorageVolume(volume: number) {
     /* almacenamiento no disponible */
   }
 }
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
