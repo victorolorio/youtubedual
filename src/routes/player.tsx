@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   COMMAND_STORAGE,
   EVENT_STORAGE,
+  MESSAGE_STORAGE,
   VOLUME_STORAGE,
   createTvChannel,
   type TvCommand,
@@ -43,6 +44,18 @@ function readCommand(): TvCommand | null {
     return raw ? (JSON.parse(raw) as TvCommand) : null;
   } catch {
     return null;
+  }
+}
+
+/** Lee el mensaje en pantalla guardado por la consola. */
+function readStoredMessage(): string {
+  try {
+    const raw = window.localStorage.getItem(MESSAGE_STORAGE);
+    if (!raw) return "";
+    const parsed = JSON.parse(raw) as { text?: string };
+    return parsed.text ?? "";
+  } catch {
+    return "";
   }
 }
 
@@ -175,7 +188,11 @@ function PlayerScreen() {
         const v = Number(e.newValue);
         if (Number.isFinite(v)) sendIframeCommand("setVolume", [v]);
       }
+      if (e.key === MESSAGE_STORAGE) {
+        setMessage(readStoredMessage());
+      }
     };
+    setMessage(readStoredMessage());
     window.addEventListener("storage", onStorage);
 
     // 3) Respaldo por BroadcastChannel (mensajes del panel)
