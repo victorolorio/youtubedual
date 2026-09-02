@@ -3,6 +3,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowDown,
   ArrowUp,
+  History as HistoryIcon,
+  Keyboard,
   KeyRound,
   ListPlus,
   MonitorPlay,
@@ -16,7 +18,9 @@ import {
   SkipForward,
   Trash2,
   Volume2,
+  VolumeX,
 } from "lucide-react";
+
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -117,6 +121,12 @@ function Dashboard() {
   const [autoNext, setAutoNext] = useState(true);
   const [karaokeMode, setKaraokeMode] = useState(true);
   const [tvOnline, setTvOnline] = useState(false);
+  const [history, setHistory] = useState<QueueTrack[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [muted, setMuted] = useState(false);
+  const mutedRef = useRef(false);
+  const preMuteRef = useRef(80);
+
 
   const send = useCallback((message: TvMessage) => {
     console.log("[TV channel] enviando", message);
@@ -369,6 +379,10 @@ function Dashboard() {
   };
 
   const next = useCallback(() => {
+    const playing = currentRef.current;
+    if (playing) {
+      setHistory((h) => [playing, ...h.filter((t) => t.id !== playing.id)].slice(0, 30));
+    }
     const [head, ...rest] = queueRef.current;
     if (!head) {
       setCurrent(null);
@@ -376,6 +390,7 @@ function Dashboard() {
       setDuration(0);
       setElapsed(0);
       send({ type: "clear" });
+      sendStorageCommand({ action: "CLEAR", timestamp: Date.now() });
       setStatus("La cola está vacía.");
       return;
     }
@@ -385,6 +400,94 @@ function Dashboard() {
 
   const nextRef = useRef(next);
   nextRef.current = next;
+
+  const applyVolume = useCallback(
+    (value: number) => {
+      const v = Math.max(0, Math.min(100, Math.round(value)));
+      setVolume(v);
+      send({ type: "volume", volume: v });
+      sendStorageVolume(v);
+      return v;
+    },
+    [send],
+  );
+
+  const togglePlay = useCallback(() => {
+    if (!currentRef.current) return;
+    if (isPlayingRef.current) {
+      setIsPlaying(false);
+      send({ type: "pause" });
+      sendStorageCommand({ action: "PAUSE", timestamp: Date.now() });
+    } else {
+      setIsPlaying(true);
+      send({ type: "play" });
+      sendStorageCommand({
+        action: "PLAY",
+        videoId: currentRef.current.videoId,
+        title: currentRef.current.title,
+        timestamp: Date.now(),
+      });
+    }
+  }, [send]);
+
+  const toggleMute = useCallback(() => {
+    if (mutedRef.current) {
+      mutedRef.current = false;
+      setMuted(false);
+      applyVolume(preMuteRef.current || 60);
+    } else {
+      mutedRef.current = true;
+      preMuteRef.current = volumeRef.current || 60;
+      setMuted(true);
+      applyVolume(0);
+    }
+  }, [applyVolume]);
+
+  // Atajos de teclado del DJ
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      switch (e.key) {
+        case " ":
+          e.preventDefault();
+          togglePlay();
+          break;
+        case "ArrowRight":
+          e.preventDefault();
+          nextRef.current();
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          applyVolume(volumeRef.current + 5);
+          setMuted(false);
+          mutedRef.current = false;
+          break;
+        case "ArrowDown":
+          e.preventDefault();
+          applyVolume(volumeRef.current - 5);
+          break;
+        case "m":
+        case "M":
+          e.preventDefault();
+          toggleMute();
+          break;
+        default:
+          break;
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [applyVolume, togglePlay, toggleMute]);
+
 
   const move = (index: number, direction: -1 | 1) => {
     setQueue((q) => {
@@ -603,10 +706,27 @@ function Dashboard() {
             >
               <RotateCcw className="size-4" /> Reiniciar
             </Button>
+            <Button
+              variant={muted ? "default" : "outline"}
+              onClick={toggleMute}
+              aria-label="Silenciar"
+            >
+              {muted ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
+              {muted ? "Sin sonido" : "Mute"}
+            </Button>
             <span className="ml-auto text-xs text-muted-foreground">
               {isPlaying ? "● En reproducción" : "❚❚ En pausa"}
             </span>
           </div>
+
+          <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-border p-3 text-xs text-muted-foreground">
+            <Keyboard className="size-4 text-primary" />
+            <span><kbd className="rounded bg-secondary px-1.5 py-0.5 font-mono">Espacio</kbd> play/pausa</span>
+            <span><kbd className="rounded bg-secondary px-1.5 py-0.5 font-mono">→</kbd> siguiente</span>
+            <span><kbd className="rounded bg-secondary px-1.5 py-0.5 font-mono">↑ ↓</kbd> volumen ±5%</span>
+            <span><kbd className="rounded bg-secondary px-1.5 py-0.5 font-mono">M</kbd> mute</span>
+          </div>
+
 
           <div className="mt-4 flex items-center gap-3 rounded-xl border border-border p-3">
             <Switch
@@ -671,7 +791,7 @@ function Dashboard() {
             />
             <div className="flex gap-2">
               <Button type="submit" className="flex-1">
-                <Send className="size-4" /> Enviar a la TV
+                <Send className="size-4" /> Proyectar
               </Button>
               <Button
                 type="button"
@@ -685,10 +805,12 @@ function Dashboard() {
                     timestamp: Date.now(),
                   });
                   sendStorageMessage("");
+                  setStatus("Mensaje quitado de la TV.");
                 }}
               >
-                Limpiar
+                Quitar
               </Button>
+
             </div>
           </form>
         </section>
@@ -760,7 +882,53 @@ function Dashboard() {
               </li>
             ))}
           </ul>
+
+          <div className="mt-5 border-t border-border pt-4">
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground"
+              onClick={() => setHistoryOpen((o) => !o)}
+            >
+              <HistoryIcon className="size-4" />
+              Historial ({history.length})
+              <span className="ml-auto text-xs">{historyOpen ? "▲" : "▼"}</span>
+            </button>
+            {historyOpen && (
+              <ul className="mt-3 space-y-2">
+                {history.length === 0 && (
+                  <li className="rounded-xl border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
+                    Aún no ha sonado ninguna canción.
+                  </li>
+                )}
+                {history.map((track) => (
+                  <li
+                    key={`h-${track.id}`}
+                    className="flex items-center gap-2 rounded-xl border border-border bg-card px-2 py-2"
+                  >
+                    <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
+                      {track.title}
+                    </span>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      aria-label="Volver a la cola"
+                      onClick={() => {
+                        setQueue((q) => [
+                          ...q,
+                          { ...track, id: `${track.videoId}-${Date.now()}` },
+                        ]);
+                        setStatus(`En cola de nuevo: ${track.title}`);
+                      }}
+                    >
+                      <ListPlus className="size-4" />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </aside>
+
         </div>
 
       </div>
