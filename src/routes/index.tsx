@@ -3,6 +3,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowDown,
   ArrowUp,
+  History as HistoryIcon,
+  Keyboard,
   KeyRound,
   ListPlus,
   MonitorPlay,
@@ -16,7 +18,9 @@ import {
   SkipForward,
   Trash2,
   Volume2,
+  VolumeX,
 } from "lucide-react";
+
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
