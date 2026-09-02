@@ -369,6 +369,10 @@ function Dashboard() {
   };
 
   const next = useCallback(() => {
+    const playing = currentRef.current;
+    if (playing) {
+      setHistory((h) => [playing, ...h.filter((t) => t.id !== playing.id)].slice(0, 30));
+    }
     const [head, ...rest] = queueRef.current;
     if (!head) {
       setCurrent(null);
@@ -376,6 +380,7 @@ function Dashboard() {
       setDuration(0);
       setElapsed(0);
       send({ type: "clear" });
+      sendStorageCommand({ action: "CLEAR", timestamp: Date.now() });
       setStatus("La cola está vacía.");
       return;
     }
@@ -385,6 +390,94 @@ function Dashboard() {
 
   const nextRef = useRef(next);
   nextRef.current = next;
+
+  const applyVolume = useCallback(
+    (value: number) => {
+      const v = Math.max(0, Math.min(100, Math.round(value)));
+      setVolume(v);
+      send({ type: "volume", volume: v });
+      sendStorageVolume(v);
+      return v;
+    },
+    [send],
+  );
+
+  const togglePlay = useCallback(() => {
+    if (!currentRef.current) return;
+    if (isPlayingRef.current) {
+      setIsPlaying(false);
+      send({ type: "pause" });
+      sendStorageCommand({ action: "PAUSE", timestamp: Date.now() });
+    } else {
+      setIsPlaying(true);
+      send({ type: "play" });
+      sendStorageCommand({
+        action: "PLAY",
+        videoId: currentRef.current.videoId,
+        title: currentRef.current.title,
+        timestamp: Date.now(),
+      });
+    }
+  }, [send]);
+
+  const toggleMute = useCallback(() => {
+    if (mutedRef.current) {
+      mutedRef.current = false;
+      setMuted(false);
+      applyVolume(preMuteRef.current || 60);
+    } else {
+      mutedRef.current = true;
+      preMuteRef.current = volumeRef.current || 60;
+      setMuted(true);
+      applyVolume(0);
+    }
+  }, [applyVolume]);
+
+  // Atajos de teclado del DJ
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      switch (e.key) {
+        case " ":
+          e.preventDefault();
+          togglePlay();
+          break;
+        case "ArrowRight":
+          e.preventDefault();
+          nextRef.current();
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          applyVolume(volumeRef.current + 5);
+          setMuted(false);
+          mutedRef.current = false;
+          break;
+        case "ArrowDown":
+          e.preventDefault();
+          applyVolume(volumeRef.current - 5);
+          break;
+        case "m":
+        case "M":
+          e.preventDefault();
+          toggleMute();
+          break;
+        default:
+          break;
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [applyVolume, togglePlay, toggleMute]);
+
 
   const move = (index: number, direction: -1 | 1) => {
     setQueue((q) => {
