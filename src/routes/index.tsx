@@ -26,6 +26,7 @@ import { Label } from "@/components/ui/label";
 import {
   COMMAND_STORAGE,
   EVENT_STORAGE,
+  MESSAGE_STORAGE,
   VOLUME_STORAGE,
   createTvChannel,
   fetchVideoTitle,
