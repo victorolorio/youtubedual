@@ -15,6 +15,7 @@ export type TvCommand =
   | { action: "PLAY"; videoId: string; title?: string; timestamp: number }
   | { action: "PAUSE"; timestamp: number }
   | { action: "RESTART"; timestamp: number }
+  | { action: "SEEK_TO"; seconds: number; timestamp: number }
   | { action: "MESSAGE"; text: string; timestamp: number }
   | { action: "CLEAR"; timestamp: number };
 
@@ -44,6 +45,7 @@ export type TvMessage =
   | { type: "play" }
   | { type: "pause" }
   | { type: "restart" }
+  | { type: "seek"; seconds: number }
   | { type: "volume"; volume: number }
   | { type: "message"; text: string }
   | { type: "clear" }

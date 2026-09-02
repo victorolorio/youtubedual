@@ -262,6 +262,10 @@ function PlayerScreen() {
           sendActive("seekTo", [0, true]);
           sendActive("playVideo");
           break;
+        case "SEEK_TO":
+          sendActive("seekTo", [Math.max(0, cmd.seconds), true]);
+          sendActive("playVideo");
+          break;
         case "MESSAGE":
           setMessage(cmd.text);
           break;
@@ -402,6 +406,10 @@ function PlayerScreen() {
             break;
           case "restart":
             sendActive("seekTo", [0, true]);
+            sendActive("playVideo");
+            break;
+          case "seek":
+            sendActive("seekTo", [Math.max(0, data.seconds), true]);
             sendActive("playVideo");
             break;
           case "volume":
@@ -657,9 +665,8 @@ function PlayerScreen() {
 
       {message && (
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 px-6 pb-6 md:px-10 md:pb-10">
-          <div className="tv-ticker mx-auto max-w-4xl rounded-2xl border border-white/10 bg-black/55 px-6 py-4 backdrop-blur-md">
-
-            <p className="truncate text-center text-base text-white/85 md:text-2xl">
+          <div className="tv-ticker mx-auto max-w-6xl rounded-2xl border border-white/15 bg-black/70 px-8 py-5 backdrop-blur-md md:px-12 md:py-6">
+            <p className="text-center text-3xl font-bold leading-tight text-white drop-shadow-lg md:text-5xl">
               {message}
             </p>
           </div>
