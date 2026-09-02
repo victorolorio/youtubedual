@@ -859,7 +859,53 @@ function Dashboard() {
               </li>
             ))}
           </ul>
+
+          <div className="mt-5 border-t border-border pt-4">
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground"
+              onClick={() => setHistoryOpen((o) => !o)}
+            >
+              <HistoryIcon className="size-4" />
+              Historial ({history.length})
+              <span className="ml-auto text-xs">{historyOpen ? "▲" : "▼"}</span>
+            </button>
+            {historyOpen && (
+              <ul className="mt-3 space-y-2">
+                {history.length === 0 && (
+                  <li className="rounded-xl border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
+                    Aún no ha sonado ninguna canción.
+                  </li>
+                )}
+                {history.map((track) => (
+                  <li
+                    key={`h-${track.id}`}
+                    className="flex items-center gap-2 rounded-xl border border-border bg-card px-2 py-2"
+                  >
+                    <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
+                      {track.title}
+                    </span>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      aria-label="Volver a la cola"
+                      onClick={() => {
+                        setQueue((q) => [
+                          ...q,
+                          { ...track, id: `${track.videoId}-${Date.now()}` },
+                        ]);
+                        setStatus(`En cola de nuevo: ${track.title}`);
+                      }}
+                    >
+                      <ListPlus className="size-4" />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </aside>
+
         </div>
 
       </div>
