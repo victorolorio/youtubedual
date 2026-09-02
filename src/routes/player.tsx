@@ -538,31 +538,38 @@ function PlayerScreen() {
   const anyVideo = decks[0].videoId || decks[1].videoId;
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-black">
+    <div className="fixed inset-0 m-0 h-screen max-h-full w-screen max-w-full overflow-hidden bg-black p-0">
       {/* Dos decks superpuestos: el activo visible, el otro precargado y mudo. */}
-      <div className="absolute inset-0 overflow-hidden">
-        {([0, 1] as const).map((idx) =>
-          decks[idx].videoId ? (
-            <iframe
-              key={`deck-${idx}-${decks[idx].videoId}`}
-              ref={deckRefs[idx]}
-              src={embedUrl(decks[idx].videoId, origin)}
-              title={decks[idx].title || `Deck ${deckLabel(idx)}`}
-              className="pointer-events-none absolute border-0"
-              style={{
-                top: "-8%",
-                left: "-8%",
-                width: "116%",
-                height: "116%",
-                opacity: opacities[idx],
-                zIndex: activeDeck === idx ? 2 : 1,
-              }}
-              allow={IFRAME_ALLOW}
-              allowFullScreen
-            />
-          ) : null,
-        )}
+      <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
+        <div
+          className="relative overflow-hidden"
+          style={{
+            aspectRatio: "16 / 9",
+            width: "min(100%, calc(100vh * 16 / 9))",
+            height: "auto",
+            maxHeight: "100%",
+          }}
+        >
+          {([0, 1] as const).map((idx) =>
+            decks[idx].videoId ? (
+              <iframe
+                key={`deck-${idx}-${decks[idx].videoId}`}
+                ref={deckRefs[idx]}
+                src={embedUrl(decks[idx].videoId, origin)}
+                title={decks[idx].title || `Deck ${deckLabel(idx)}`}
+                className="pointer-events-none absolute inset-0 h-full w-full border-0"
+                style={{
+                  opacity: opacities[idx],
+                  zIndex: activeDeck === idx ? 2 : 1,
+                }}
+                allow={IFRAME_ALLOW}
+                allowFullScreen
+              />
+            ) : null,
+          )}
+        </div>
       </div>
+
 
       {embedError && (
         <div className="pointer-events-none absolute inset-x-0 top-8 z-20 flex justify-center px-6">
