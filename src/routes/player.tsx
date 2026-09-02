@@ -314,15 +314,31 @@ function PlayerScreen() {
     };
   }, []);
 
-  // Fondo negro persistente
+  // Fondo negro persistente + sin scroll ni márgenes
   useEffect(() => {
+    const html = document.documentElement;
+    html.style.overflow = "hidden";
+    html.style.margin = "0";
+    html.style.padding = "0";
     document.body.style.overflow = "hidden";
+    document.body.style.margin = "0";
+    document.body.style.padding = "0";
+    document.body.style.maxWidth = "100%";
+    document.body.style.maxHeight = "100%";
     document.body.style.backgroundColor = "#000";
     return () => {
+      html.style.overflow = "";
+      html.style.margin = "";
+      html.style.padding = "";
       document.body.style.overflow = "";
+      document.body.style.margin = "";
+      document.body.style.padding = "";
+      document.body.style.maxWidth = "";
+      document.body.style.maxHeight = "";
       document.body.style.backgroundColor = "";
     };
   }, []);
+
 
   // Sincronización dual: evento 'storage' (principal) + BroadcastChannel (respaldo)
   useEffect(() => {
@@ -538,34 +554,42 @@ function PlayerScreen() {
   const anyVideo = decks[0].videoId || decks[1].videoId;
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-black">
+    <div className="fixed inset-0 m-0 h-screen max-h-full w-screen max-w-full overflow-hidden bg-black p-0">
       {/* Dos decks superpuestos: el activo visible, el otro precargado y mudo. */}
-      <div className="absolute inset-0 overflow-hidden">
-        {([0, 1] as const).map((idx) =>
-          decks[idx].videoId ? (
-            <iframe
-              key={`deck-${idx}-${decks[idx].videoId}`}
-              ref={deckRefs[idx]}
-              src={embedUrl(decks[idx].videoId, origin)}
-              title={decks[idx].title || `Deck ${deckLabel(idx)}`}
-              className="pointer-events-none absolute border-0"
-              style={{
-                top: "-8%",
-                left: "-8%",
-                width: "116%",
-                height: "116%",
-                opacity: opacities[idx],
-                zIndex: activeDeck === idx ? 2 : 1,
-              }}
-              allow={IFRAME_ALLOW}
-              allowFullScreen
-            />
-          ) : null,
-        )}
+      <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
+        <div
+          className="relative overflow-hidden"
+          style={{
+            aspectRatio: "16 / 9",
+            width: "min(100%, calc(100vh * 16 / 9))",
+            height: "auto",
+            maxHeight: "100%",
+          }}
+        >
+          {([0, 1] as const).map((idx) =>
+            decks[idx].videoId ? (
+              <iframe
+                key={`deck-${idx}-${decks[idx].videoId}`}
+                ref={deckRefs[idx]}
+                src={embedUrl(decks[idx].videoId, origin)}
+                title={decks[idx].title || `Deck ${deckLabel(idx)}`}
+                className="pointer-events-none absolute inset-0 h-full w-full border-0"
+                style={{
+                  opacity: opacities[idx],
+                  zIndex: activeDeck === idx ? 2 : 1,
+                }}
+                allow={IFRAME_ALLOW}
+                allowFullScreen
+              />
+            ) : null,
+          )}
+        </div>
       </div>
 
+
       {embedError && (
-        <div className="pointer-events-none absolute inset-x-0 top-8 z-20 flex justify-center px-6">
+        <div className="pointer-events-none absolute inset-x-0 top-6 z-20 flex justify-center px-6 md:top-10 md:px-10">
+
           <p className="rounded-full border border-red-500/40 bg-red-950/80 px-6 py-3 text-sm font-semibold text-red-200 backdrop-blur-md">
             {embedError}
           </p>
@@ -610,8 +634,9 @@ function PlayerScreen() {
       </button>
 
       {message && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 p-6">
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 px-6 pb-6 md:px-10 md:pb-10">
           <div className="tv-ticker mx-auto max-w-4xl rounded-2xl border border-white/10 bg-black/55 px-6 py-4 backdrop-blur-md">
+
             <p className="truncate text-center text-base text-white/85 md:text-2xl">
               {message}
             </p>
