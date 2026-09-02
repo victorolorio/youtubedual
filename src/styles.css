@@ -151,3 +151,25 @@
     color: var(--color-foreground);
   }
 }
+
+@keyframes tv-idle-drift {
+  0% { transform: translate3d(-6%, -4%, 0) scale(1.1); }
+  50% { transform: translate3d(6%, 4%, 0) scale(1.25); }
+  100% { transform: translate3d(-6%, -4%, 0) scale(1.1); }
+}
+
+@keyframes tv-ticker-in {
+  from { transform: translateY(120%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.tv-idle-bg {
+  background: radial-gradient(60% 60% at 30% 30%, oklch(0.3 0.09 265 / 60%), transparent 70%),
+    radial-gradient(50% 50% at 75% 70%, oklch(0.28 0.1 300 / 55%), transparent 70%),
+    #000;
+  animation: tv-idle-drift 18s ease-in-out infinite;
+}
+
+.tv-ticker {
+  animation: tv-ticker-in 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
