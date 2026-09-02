@@ -388,23 +388,38 @@ function PlayerScreen() {
         </button>
       )}
 
-      {!title && (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <p className="text-sm uppercase tracking-[0.4em] text-white/40">
-            Esperando la señal de la consola
-          </p>
-        </div>
-      )}
-
-      {message && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 p-6">
-          <div className="mx-auto max-w-4xl rounded-2xl border border-white/10 bg-black/55 px-6 py-4 backdrop-blur-md">
-            {message && (
-              <p className="mt-1 truncate text-base text-white/70 md:text-xl">{message}</p>
-            )}
+      {!videoId && (
+        <div className="absolute inset-0 z-10 overflow-hidden">
+          <div className="tv-idle-bg absolute inset-0" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <p className="animate-fade-in text-lg uppercase tracking-[0.4em] text-white/60 md:text-2xl">
+              En breve más música...
+            </p>
           </div>
         </div>
       )}
+
+      <button
+        type="button"
+        onClick={toggleFullscreen}
+        aria-label="Pantalla completa"
+        className={`absolute bottom-6 right-6 z-30 rounded-full border border-white/20 bg-black/50 px-4 py-2 text-xs uppercase tracking-widest text-white/70 backdrop-blur-md transition-opacity duration-500 hover:text-white ${
+          controlsVisible ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+      >
+        ⛶ Pantalla completa
+      </button>
+
+      {message && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 p-6">
+          <div className="tv-ticker mx-auto max-w-4xl rounded-2xl border border-white/10 bg-black/55 px-6 py-4 backdrop-blur-md">
+            <p className="truncate text-center text-base text-white/85 md:text-2xl">
+              {message}
+            </p>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
