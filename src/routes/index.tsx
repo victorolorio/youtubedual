@@ -128,6 +128,7 @@ function Dashboard() {
   const volumeRef = useRef(volume);
   const queueRef = useRef<QueueTrack[]>([]);
   const autoNextRef = useRef(autoNext);
+  const lastSkipRef = useRef(0);
   const lastAliveRef = useRef(0);
   currentRef.current = current;
   isPlayingRef.current = isPlaying;
@@ -154,6 +155,8 @@ function Dashboard() {
       setElapsed(ev.currentTime);
       setIsPlaying(ev.playing);
       if (ev.kind === "embed_error") {
+        if (Date.now() - lastSkipRef.current < 3000) return;
+        lastSkipRef.current = Date.now();
         toast.error("Canción con restricción de autor, pasando a la siguiente");
         setStatus("Canción con restricción de autor, pasando a la siguiente");
         window.setTimeout(() => nextRef.current(), 300);
@@ -200,6 +203,8 @@ function Dashboard() {
       }
 
       if (data.type === "embed_error") {
+        if (Date.now() - lastSkipRef.current < 3000) return;
+        lastSkipRef.current = Date.now();
         // Video bloqueado para embeber: avisar y saltar a la siguiente canción
         toast.error("Canción con restricción de autor, pasando a la siguiente");
         setStatus("Canción con restricción de autor, pasando a la siguiente");
