@@ -23,6 +23,7 @@ export type TvEvent = {
   kind: "heartbeat" | "ended" | "embed_error";
   code?: number;
   title?: string;
+  videoId?: string;
   deck?: DeckId;
   duration: number;
   currentTime: number;
