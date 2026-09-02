@@ -6,6 +6,10 @@ export const VOLUME_STORAGE = "tv_player_volume";
 export const EVENT_STORAGE = "tv_player_event";
 /** Canal dedicado para el mensaje en pantalla (independiente de los comandos). */
 export const MESSAGE_STORAGE = "tv_player_message";
+/** Duración del crossfade entre decks, en milisegundos (0 = corte directo). */
+export const CROSSFADE_STORAGE = "tv_crossfade_ms";
+
+export type DeckId = "A" | "B";
 
 export type TvCommand =
   | { action: "PLAY"; videoId: string; title?: string; timestamp: number }
@@ -19,11 +23,13 @@ export type TvEvent = {
   kind: "heartbeat" | "ended" | "embed_error";
   code?: number;
   title?: string;
+  deck?: DeckId;
   duration: number;
   currentTime: number;
   playing: boolean;
   timestamp: number;
 };
+
 
 
 export type QueueTrack = {
@@ -41,8 +47,15 @@ export type TvMessage =
   | { type: "message"; text: string }
   | { type: "clear" }
   | { type: "request_state" }
+  | { type: "crossfade"; ms: number }
   | { type: "embed_error"; videoId: string; title: string; code: number }
-  | { type: "state"; duration: number; currentTime: number; playing: boolean };
+  | {
+      type: "state";
+      duration: number;
+      currentTime: number;
+      playing: boolean;
+      deck?: DeckId;
+    };
 
 export function createTvChannel(): BroadcastChannel | null {
   if (typeof window === "undefined" || typeof BroadcastChannel === "undefined") {

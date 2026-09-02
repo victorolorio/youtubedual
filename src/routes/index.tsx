@@ -30,6 +30,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
   COMMAND_STORAGE,
+  CROSSFADE_STORAGE,
   EVENT_STORAGE,
   MESSAGE_STORAGE,
   VOLUME_STORAGE,
@@ -38,6 +39,7 @@ import {
   formatTime,
   parseVideoId,
   searchYouTube,
+  type DeckId,
   type QueueTrack,
   type TvCommand,
   type TvEvent,
@@ -48,6 +50,14 @@ import {
 const API_KEY_STORAGE = "youtube_api_key";
 const AUTONEXT_STORAGE = "tv_auto_next";
 const KARAOKE_MODE_STORAGE = "tv_karaoke_mode";
+
+const CROSSFADE_OPTIONS = [
+  { label: "Corte directo", ms: 0 },
+  { label: "1 s", ms: 1000 },
+  { label: "2 s", ms: 2000 },
+  { label: "3 s", ms: 3000 },
+];
+
 
 function sendStorageMessage(text: string) {
   try {
@@ -75,6 +85,15 @@ function sendStorageVolume(volume: number) {
     /* almacenamiento no disponible */
   }
 }
+
+function sendStorageCrossfade(ms: number) {
+  try {
+    window.localStorage.setItem(CROSSFADE_STORAGE, String(ms));
+  } catch {
+    /* almacenamiento no disponible */
+  }
+}
+
 
 
 export const Route = createFileRoute("/")({
@@ -124,8 +143,11 @@ function Dashboard() {
   const [history, setHistory] = useState<QueueTrack[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [muted, setMuted] = useState(false);
+  const [crossfadeMs, setCrossfadeMs] = useState(2000);
+  const [activeDeck, setActiveDeck] = useState<DeckId>("A");
   const mutedRef = useRef(false);
   const preMuteRef = useRef(80);
+
 
 
   const send = useCallback((message: TvMessage) => {
@@ -154,7 +176,11 @@ function Dashboard() {
     if (savedAuto != null) setAutoNext(savedAuto === "1");
     const savedKaraoke = window.localStorage.getItem(KARAOKE_MODE_STORAGE);
     if (savedKaraoke != null) setKaraokeMode(savedKaraoke === "1");
+    const savedFade = Number(window.localStorage.getItem(CROSSFADE_STORAGE));
+    if (Number.isFinite(savedFade) && savedFade >= 0) setCrossfadeMs(savedFade);
+    else sendStorageCrossfade(2000);
   }, []);
+
 
   // Eventos que llegan desde la ventana de TV (latido + fin de canción)
   useEffect(() => {
@@ -164,6 +190,8 @@ function Dashboard() {
       setDuration(ev.duration);
       setElapsed(ev.currentTime);
       setIsPlaying(ev.playing);
+      if (ev.deck) setActiveDeck(ev.deck);
+
       if (ev.kind === "embed_error") {
         if (Date.now() - lastSkipRef.current < 3000) return;
         lastSkipRef.current = Date.now();
@@ -210,6 +238,8 @@ function Dashboard() {
         setDuration(data.duration);
         setElapsed(data.currentTime);
         setIsPlaying(data.playing);
+        if (data.deck) setActiveDeck(data.deck);
+
       }
 
       if (data.type === "embed_error") {
@@ -744,6 +774,52 @@ function Dashboard() {
               TV: {tvOnline ? "conectada" : "desconectada"}
             </span>
           </div>
+
+          <div className="mt-4 rounded-xl border border-border p-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-sm font-medium">Duración de crossfade</span>
+              <div className="ml-auto flex items-center gap-2 text-xs">
+                {(["A", "B"] as const).map((deck) => (
+                  <span
+                    key={deck}
+                    className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono transition-colors ${
+                      activeDeck === deck
+                        ? "border-primary/50 bg-primary/10 text-primary"
+                        : "border-border text-muted-foreground"
+                    }`}
+                  >
+                    <span
+                      className={`size-2 rounded-full ${
+                        activeDeck === deck
+                          ? "bg-primary shadow-glow"
+                          : "bg-muted-foreground/40"
+                      }`}
+                    />
+                    Deck {deck}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {CROSSFADE_OPTIONS.map((opt) => (
+                <Button
+                  key={opt.ms}
+                  size="sm"
+                  variant={crossfadeMs === opt.ms ? "default" : "outline"}
+                  onClick={() => {
+                    setCrossfadeMs(opt.ms);
+                    sendStorageCrossfade(opt.ms);
+                    send({ type: "crossfade", ms: opt.ms });
+                    setStatus(`Crossfade: ${opt.label}`);
+                  }}
+                >
+                  {opt.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+
 
           <div className="mt-5 flex items-center gap-3">
             <Volume2 className="size-5 text-muted-foreground" />
