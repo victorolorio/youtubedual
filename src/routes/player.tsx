@@ -113,7 +113,10 @@ function PlayerScreen() {
 
   /** Escribe un evento para la consola (funciona entre ventanas vía localStorage). */
   const writeEvent = useCallback(
-    (kind: TvEvent["kind"], extra?: { code?: number; title?: string }) => {
+    (
+      kind: TvEvent["kind"],
+      extra?: { code?: number; title?: string; videoId?: string },
+    ) => {
       try {
         window.localStorage.setItem(
           EVENT_STORAGE,
