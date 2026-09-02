@@ -47,8 +47,15 @@ export type TvMessage =
   | { type: "message"; text: string }
   | { type: "clear" }
   | { type: "request_state" }
+  | { type: "crossfade"; ms: number }
   | { type: "embed_error"; videoId: string; title: string; code: number }
-  | { type: "state"; duration: number; currentTime: number; playing: boolean };
+  | {
+      type: "state";
+      duration: number;
+      currentTime: number;
+      playing: boolean;
+      deck?: DeckId;
+    };
 
 export function createTvChannel(): BroadcastChannel | null {
   if (typeof window === "undefined" || typeof BroadcastChannel === "undefined") {
