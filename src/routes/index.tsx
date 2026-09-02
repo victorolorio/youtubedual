@@ -381,8 +381,8 @@ function Dashboard() {
     });
   };
 
-  const runSearch = async () => {
-    const query = searchQuery.trim();
+  const doSearch = async (rawQuery: string, forceExtra = false) => {
+    const query = rawQuery.trim();
     if (!query) return;
     if (!apiKey) {
       setSearchError("Configura tu YouTube API Key en ajustes para buscar.");
@@ -394,7 +394,9 @@ function Dashboard() {
     try {
       // Modo karaoke: añade la palabra automáticamente si no está escrita
       const finalQuery =
-        karaokeMode && !/karaoke/i.test(query) ? `${query} karaoke` : query;
+        (forceExtra || karaokeMode) && !/karaoke|live|en vivo/i.test(query)
+          ? `${query} karaoke`
+          : query;
       setResults(await searchYouTube(finalQuery, apiKey));
     } catch (err) {
       setResults([]);
@@ -404,6 +406,17 @@ function Dashboard() {
     } finally {
       setSearching(false);
     }
+  };
+
+  const runSearch = () => doSearch(searchQuery);
+
+  /** Busca una versión alternativa (karaoke / en vivo) de una canción bloqueada. */
+  const searchAlternative = (title: string) => {
+    const clean = title.replace(/\s*[-–|(].*$/, "").trim() || title;
+    const q = `${clean} karaoke live`;
+    setSearchQuery(q);
+    void doSearch(q, true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const saveApiKey = () => {
