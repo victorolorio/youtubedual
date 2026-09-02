@@ -50,6 +50,16 @@ import {
 const API_KEY_STORAGE = "youtube_api_key";
 const AUTONEXT_STORAGE = "tv_auto_next";
 const KARAOKE_MODE_STORAGE = "tv_karaoke_mode";
+const QUEUE_STORAGE = "dj_queue";
+const CURRENT_STORAGE = "dj_current";
+
+function persistQueue(list: QueueTrack[]) {
+  try {
+    window.localStorage.setItem(QUEUE_STORAGE, JSON.stringify(list));
+  } catch {
+    /* almacenamiento no disponible */
+  }
+}
 
 const CROSSFADE_OPTIONS = [
   { label: "Corte directo", ms: 0 },
@@ -165,6 +175,7 @@ function Dashboard() {
   const autoNextRef = useRef(autoNext);
   const lastSkipRef = useRef(0);
   const lastAliveRef = useRef(0);
+  const lastAdvanceRef = useRef(0);
   currentRef.current = current;
   isPlayingRef.current = isPlaying;
   volumeRef.current = volume;
@@ -183,7 +194,41 @@ function Dashboard() {
     const savedFade = Number(window.localStorage.getItem(CROSSFADE_STORAGE));
     if (Number.isFinite(savedFade) && savedFade >= 0) setCrossfadeMs(savedFade);
     else sendStorageCrossfade(2000);
+    // Restaura la cola y la pista actual guardadas.
+    try {
+      const rawQueue = window.localStorage.getItem(QUEUE_STORAGE);
+      if (rawQueue) {
+        const parsed = JSON.parse(rawQueue) as QueueTrack[];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          queueRef.current = parsed;
+          setQueue(parsed);
+        }
+      }
+      const rawCurrent = window.localStorage.getItem(CURRENT_STORAGE);
+      if (rawCurrent) setCurrent(JSON.parse(rawCurrent) as QueueTrack);
+    } catch {
+      /* datos inválidos */
+    }
   }, []);
+
+  // Persistencia inmediata de la cola y de la pista actual.
+  const restoredRef = useRef(false);
+  useEffect(() => {
+    if (!restoredRef.current) {
+      restoredRef.current = true;
+      return;
+    }
+    persistQueue(queue);
+  }, [queue]);
+
+  useEffect(() => {
+    try {
+      if (current) window.localStorage.setItem(CURRENT_STORAGE, JSON.stringify(current));
+      else window.localStorage.removeItem(CURRENT_STORAGE);
+    } catch {
+      /* almacenamiento no disponible */
+    }
+  }, [current]);
 
 
   /** Aviso discreto al DJ + marcado del video bloqueado + salto inmediato. */
@@ -430,25 +475,35 @@ function Dashboard() {
   };
 
   const next = useCallback(() => {
+    // Guardia: evita dobles saltos (BroadcastChannel + storage llegan juntos).
+    if (Date.now() - lastAdvanceRef.current < 1200) return;
+    lastAdvanceRef.current = Date.now();
+
     const playing = currentRef.current;
     if (playing) {
       setHistory((h) => [playing, ...h.filter((t) => t.id !== playing.id)].slice(0, 30));
     }
-    const [head, ...rest] = queueRef.current;
-    if (!head) {
-      setCurrent(null);
-      setIsPlaying(false);
-      setDuration(0);
-      setElapsed(0);
-      send({ type: "clear" });
-      sendStorageCommand({ action: "CLEAR", timestamp: Date.now() });
-      setStatus("La cola está vacía.");
-      return;
-    }
-    // Solo se extrae el primer elemento; el resto conserva su orden.
-    queueRef.current = rest;
-    setQueue(rest);
-    playTrackRef.current(head);
+
+    // Actualización funcional: nunca se vacía la cola, solo se extrae la cabeza.
+    setQueue((prev) => {
+      if (prev.length === 0) {
+        queueRef.current = [];
+        persistQueue([]);
+        setCurrent(null);
+        setIsPlaying(false);
+        setDuration(0);
+        setElapsed(0);
+        send({ type: "clear" });
+        sendStorageCommand({ action: "CLEAR", timestamp: Date.now() });
+        setStatus("La cola está vacía.");
+        return [];
+      }
+      const [head, ...rest] = prev;
+      queueRef.current = rest;
+      persistQueue(rest);
+      playTrackRef.current(head!);
+      return rest;
+    });
   }, [send]);
 
   /** Salto en la barra de tiempo: envía SEEK_TO a la TV al instante. */
