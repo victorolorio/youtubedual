@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 import {
   COMMAND_STORAGE,
   EVENT_STORAGE,
@@ -200,12 +201,9 @@ function Dashboard() {
 
       if (data.type === "embed_error") {
         // Video bloqueado para embeber: avisar y saltar a la siguiente canción
-        const msg =
-          data.code === 101 || data.code === 150
-            ? `«${data.title}» no permite reproducción embebida. Saltando…`
-            : `Error ${data.code} en «${data.title}». Saltando…`;
-        setStatus(msg);
-        window.setTimeout(() => nextRef.current(), 1200);
+        toast.error("Canción con restricción de autor, pasando a la siguiente");
+        setStatus("Canción con restricción de autor, pasando a la siguiente");
+        window.setTimeout(() => nextRef.current(), 300);
       }
       if (data.type === "request_state") {
         // La TV se abrió después: reenviar pista actual, acción y volumen
