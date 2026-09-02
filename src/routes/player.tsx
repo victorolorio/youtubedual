@@ -314,15 +314,31 @@ function PlayerScreen() {
     };
   }, []);
 
-  // Fondo negro persistente
+  // Fondo negro persistente + sin scroll ni márgenes
   useEffect(() => {
+    const html = document.documentElement;
+    html.style.overflow = "hidden";
+    html.style.margin = "0";
+    html.style.padding = "0";
     document.body.style.overflow = "hidden";
+    document.body.style.margin = "0";
+    document.body.style.padding = "0";
+    document.body.style.maxWidth = "100%";
+    document.body.style.maxHeight = "100%";
     document.body.style.backgroundColor = "#000";
     return () => {
+      html.style.overflow = "";
+      html.style.margin = "";
+      html.style.padding = "";
       document.body.style.overflow = "";
+      document.body.style.margin = "";
+      document.body.style.padding = "";
+      document.body.style.maxWidth = "";
+      document.body.style.maxHeight = "";
       document.body.style.backgroundColor = "";
     };
   }, []);
+
 
   // Sincronización dual: evento 'storage' (principal) + BroadcastChannel (respaldo)
   useEffect(() => {
