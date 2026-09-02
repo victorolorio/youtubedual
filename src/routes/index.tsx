@@ -207,7 +207,7 @@ function Dashboard() {
       if (ev.deck) setActiveDeck(ev.deck);
 
       if (ev.kind === "embed_error") {
-        handleEmbedError({ title: ev.title, videoId: ev.videoId });
+        handleEmbedError({ title: ev.title ?? "", videoId: ev.videoId ?? "" });
         return;
       }
       if (ev.kind === "ended" && autoNextRef.current) {
