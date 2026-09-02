@@ -26,6 +26,7 @@ import { Label } from "@/components/ui/label";
 import {
   COMMAND_STORAGE,
   EVENT_STORAGE,
+  MESSAGE_STORAGE,
   VOLUME_STORAGE,
   createTvChannel,
   fetchVideoTitle,
@@ -41,6 +42,18 @@ import {
 
 const API_KEY_STORAGE = "youtube_api_key";
 const AUTONEXT_STORAGE = "tv_auto_next";
+const KARAOKE_MODE_STORAGE = "tv_karaoke_mode";
+
+function sendStorageMessage(text: string) {
+  try {
+    window.localStorage.setItem(
+      MESSAGE_STORAGE,
+      JSON.stringify({ text, timestamp: Date.now() }),
+    );
+  } catch {
+    /* almacenamiento no disponible */
+  }
+}
 
 function sendStorageCommand(cmd: TvCommand) {
   try {
@@ -101,6 +114,7 @@ function Dashboard() {
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [autoNext, setAutoNext] = useState(true);
+  const [karaokeMode, setKaraokeMode] = useState(true);
   const [tvOnline, setTvOnline] = useState(false);
 
   const send = useCallback((message: TvMessage) => {
@@ -126,6 +140,8 @@ function Dashboard() {
     setKeyDraft(saved);
     const savedAuto = window.localStorage.getItem(AUTONEXT_STORAGE);
     if (savedAuto != null) setAutoNext(savedAuto === "1");
+    const savedKaraoke = window.localStorage.getItem(KARAOKE_MODE_STORAGE);
+    if (savedKaraoke != null) setKaraokeMode(savedKaraoke === "1");
   }, []);
 
   // Eventos que llegan desde la ventana de TV (latido + fin de canción)
@@ -321,7 +337,10 @@ function Dashboard() {
     setSearching(true);
     setSearchError(null);
     try {
-      setResults(await searchYouTube(query, apiKey));
+      // Modo karaoke: añade la palabra automáticamente si no está escrita
+      const finalQuery =
+        karaokeMode && !/karaoke/i.test(query) ? `${query} karaoke` : query;
+      setResults(await searchYouTube(finalQuery, apiKey));
     } catch (err) {
       setResults([]);
       setSearchError(
@@ -433,6 +452,25 @@ function Dashboard() {
               {searching ? "Buscando..." : "Buscar"}
             </Button>
           </form>
+
+          <div className="mt-3 flex items-center gap-3 rounded-xl border border-border p-3">
+            <Switch
+              id="karaoke-mode"
+              checked={karaokeMode}
+              onCheckedChange={(checked) => {
+                setKaraokeMode(checked);
+                window.localStorage.setItem(
+                  KARAOKE_MODE_STORAGE,
+                  checked ? "1" : "0",
+                );
+              }}
+            />
+            <Label htmlFor="karaoke-mode" className="text-sm">
+              {karaokeMode
+                ? "Modo karaoke (agrega «karaoke» automáticamente)"
+                : "Modo video normal"}
+            </Label>
+          </div>
 
           {!apiKey && (
             <div className="mt-3 flex items-center gap-2 rounded-xl border border-dashed border-border p-3 text-sm text-muted-foreground">
@@ -611,6 +649,8 @@ function Dashboard() {
               const text = screenMessage.trim();
               send({ type: "message", text });
               sendStorageCommand({ action: "MESSAGE", text, timestamp: Date.now() });
+              sendStorageMessage(text);
+              ensureTvOpen();
               setStatus(text ? `Mensaje enviado: «${text}»` : "Mensaje limpiado.");
             }}
           >
@@ -635,6 +675,7 @@ function Dashboard() {
                     text: "",
                     timestamp: Date.now(),
                   });
+                  sendStorageMessage("");
                 }}
               >
                 Limpiar

@@ -289,6 +289,11 @@ function PlayerScreen() {
 
     // 5) Reportar progreso + latido al panel cada segundo
     const interval = window.setInterval(() => {
+      // Respaldo: si el evento 'storage' no llega, se lee el mensaje igualmente
+      setMessage((prev) => {
+        const stored = readStoredMessage();
+        return stored === prev ? prev : stored;
+      });
       writeEvent("heartbeat");
       channelRef.current?.postMessage({
         type: "state",
