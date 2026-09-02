@@ -194,7 +194,36 @@ function Dashboard() {
     const savedFade = Number(window.localStorage.getItem(CROSSFADE_STORAGE));
     if (Number.isFinite(savedFade) && savedFade >= 0) setCrossfadeMs(savedFade);
     else sendStorageCrossfade(2000);
+    // Restaura la cola y la pista actual guardadas.
+    try {
+      const rawQueue = window.localStorage.getItem(QUEUE_STORAGE);
+      if (rawQueue) {
+        const parsed = JSON.parse(rawQueue) as QueueTrack[];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          queueRef.current = parsed;
+          setQueue(parsed);
+        }
+      }
+      const rawCurrent = window.localStorage.getItem(CURRENT_STORAGE);
+      if (rawCurrent) setCurrent(JSON.parse(rawCurrent) as QueueTrack);
+    } catch {
+      /* datos inválidos */
+    }
   }, []);
+
+  // Persistencia inmediata de la cola y de la pista actual.
+  useEffect(() => {
+    persistQueue(queue);
+  }, [queue]);
+
+  useEffect(() => {
+    try {
+      if (current) window.localStorage.setItem(CURRENT_STORAGE, JSON.stringify(current));
+      else window.localStorage.removeItem(CURRENT_STORAGE);
+    } catch {
+      /* almacenamiento no disponible */
+    }
+  }, [current]);
 
 
   /** Aviso discreto al DJ + marcado del video bloqueado + salto inmediato. */
