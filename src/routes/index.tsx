@@ -184,6 +184,18 @@ function Dashboard() {
   }, []);
 
 
+  /** Aviso discreto al DJ + marcado del video bloqueado + salto inmediato. */
+  const handleEmbedError = useCallback((info: { title?: string; videoId?: string }) => {
+    if (Date.now() - lastSkipRef.current < 3000) return;
+    lastSkipRef.current = Date.now();
+    const name = info.title || currentRef.current?.title || "La canción";
+    const id = info.videoId || currentRef.current?.videoId;
+    if (id) setBlockedIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+    toast.error(`⚠️ ${name} bloqueada por derechos. Pasando a la siguiente.`);
+    setStatus(`⚠️ ${name} bloqueada por derechos. Pasando a la siguiente.`);
+    window.setTimeout(() => nextRef.current(), 300);
+  }, []);
+
   // Eventos que llegan desde la ventana de TV (latido + fin de canción)
   useEffect(() => {
     const handleEvent = (ev: TvEvent) => {
@@ -195,11 +207,7 @@ function Dashboard() {
       if (ev.deck) setActiveDeck(ev.deck);
 
       if (ev.kind === "embed_error") {
-        if (Date.now() - lastSkipRef.current < 3000) return;
-        lastSkipRef.current = Date.now();
-        toast.error("Canción con restricción de autor, pasando a la siguiente");
-        setStatus("Canción con restricción de autor, pasando a la siguiente");
-        window.setTimeout(() => nextRef.current(), 300);
+        handleEmbedError({ title: ev.title, videoId: ev.videoId });
         return;
       }
       if (ev.kind === "ended" && autoNextRef.current) {
