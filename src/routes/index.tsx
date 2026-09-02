@@ -775,6 +775,52 @@ function Dashboard() {
             </span>
           </div>
 
+          <div className="mt-4 rounded-xl border border-border p-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-sm font-medium">Duración de crossfade</span>
+              <div className="ml-auto flex items-center gap-2 text-xs">
+                {(["A", "B"] as const).map((deck) => (
+                  <span
+                    key={deck}
+                    className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono transition-colors ${
+                      activeDeck === deck
+                        ? "border-primary/50 bg-primary/10 text-primary"
+                        : "border-border text-muted-foreground"
+                    }`}
+                  >
+                    <span
+                      className={`size-2 rounded-full ${
+                        activeDeck === deck
+                          ? "bg-primary shadow-glow"
+                          : "bg-muted-foreground/40"
+                      }`}
+                    />
+                    Deck {deck}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {CROSSFADE_OPTIONS.map((opt) => (
+                <Button
+                  key={opt.ms}
+                  size="sm"
+                  variant={crossfadeMs === opt.ms ? "default" : "outline"}
+                  onClick={() => {
+                    setCrossfadeMs(opt.ms);
+                    sendStorageCrossfade(opt.ms);
+                    send({ type: "crossfade", ms: opt.ms });
+                    setStatus(`Crossfade: ${opt.label}`);
+                  }}
+                >
+                  {opt.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+
+
           <div className="mt-5 flex items-center gap-3">
             <Volume2 className="size-5 text-muted-foreground" />
             <Slider
