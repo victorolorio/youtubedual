@@ -337,24 +337,33 @@ function PlayerScreen() {
   const embedSrc = videoId
     ? `https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1&origin=${encodeURIComponent(
         window.location.origin,
-      )}&rel=0&modestbranding=1&playsinline=1&controls=0&iv_load_policy=3`
+      )}&rel=0&modestbranding=1&playsinline=1&controls=0&iv_load_policy=3&fs=0&disablekb=1&showinfo=0&cc_load_policy=0&color=white`
     : "";
 
   return (
     <div className="fixed inset-0 overflow-hidden bg-black">
-      <div className="absolute inset-0">
+      {/* Sobrescaneo: amplía el iframe y recorta los bordes donde YouTube
+          dibuja el título, el logo y la marca de agua. */}
+      <div className="absolute inset-0 overflow-hidden">
         {videoId && (
           <iframe
             key={videoId}
             ref={iframeRef}
             src={embedSrc}
             title={title || "Reproductor de karaoke"}
-            className="size-full border-0"
+            className="pointer-events-none absolute border-0"
+            style={{
+              top: "-8%",
+              left: "-8%",
+              width: "116%",
+              height: "116%",
+            }}
             allow={IFRAME_ALLOW}
             allowFullScreen
           />
         )}
       </div>
+
 
       {embedError && (
         <div className="pointer-events-none absolute inset-x-0 top-8 z-20 flex justify-center px-6">
