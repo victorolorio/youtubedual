@@ -142,6 +142,8 @@ function Dashboard() {
   const [tvOnline, setTvOnline] = useState(false);
   const [history, setHistory] = useState<QueueTrack[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
+  /** IDs de video bloqueados por derechos (no reproducibles). */
+  const [blockedIds, setBlockedIds] = useState<string[]>([]);
   const [muted, setMuted] = useState(false);
   const [crossfadeMs, setCrossfadeMs] = useState(2000);
   const [activeDeck, setActiveDeck] = useState<DeckId>("A");
@@ -182,6 +184,18 @@ function Dashboard() {
   }, []);
 
 
+  /** Aviso discreto al DJ + marcado del video bloqueado + salto inmediato. */
+  const handleEmbedError = useCallback((info: { title?: string; videoId?: string }) => {
+    if (Date.now() - lastSkipRef.current < 3000) return;
+    lastSkipRef.current = Date.now();
+    const name = info.title || currentRef.current?.title || "La canción";
+    const id = info.videoId || currentRef.current?.videoId;
+    if (id) setBlockedIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+    toast.error(`⚠️ ${name} bloqueada por derechos. Pasando a la siguiente.`);
+    setStatus(`⚠️ ${name} bloqueada por derechos. Pasando a la siguiente.`);
+    window.setTimeout(() => nextRef.current(), 300);
+  }, []);
+
   // Eventos que llegan desde la ventana de TV (latido + fin de canción)
   useEffect(() => {
     const handleEvent = (ev: TvEvent) => {
@@ -193,11 +207,7 @@ function Dashboard() {
       if (ev.deck) setActiveDeck(ev.deck);
 
       if (ev.kind === "embed_error") {
-        if (Date.now() - lastSkipRef.current < 3000) return;
-        lastSkipRef.current = Date.now();
-        toast.error("Canción con restricción de autor, pasando a la siguiente");
-        setStatus("Canción con restricción de autor, pasando a la siguiente");
-        window.setTimeout(() => nextRef.current(), 300);
+        handleEmbedError({ title: ev.title ?? "", videoId: ev.videoId ?? "" });
         return;
       }
       if (ev.kind === "ended" && autoNextRef.current) {
@@ -243,12 +253,8 @@ function Dashboard() {
       }
 
       if (data.type === "embed_error") {
-        if (Date.now() - lastSkipRef.current < 3000) return;
-        lastSkipRef.current = Date.now();
-        // Video bloqueado para embeber: avisar y saltar a la siguiente canción
-        toast.error("Canción con restricción de autor, pasando a la siguiente");
-        setStatus("Canción con restricción de autor, pasando a la siguiente");
-        window.setTimeout(() => nextRef.current(), 300);
+        // Video bloqueado para embeber: avisar solo al DJ y saltar
+        handleEmbedError({ title: data.title, videoId: data.videoId });
       }
       if (data.type === "request_state") {
         // La TV se abrió después: reenviar pista actual, acción y volumen
@@ -375,8 +381,8 @@ function Dashboard() {
     });
   };
 
-  const runSearch = async () => {
-    const query = searchQuery.trim();
+  const doSearch = async (rawQuery: string, forceExtra = false) => {
+    const query = rawQuery.trim();
     if (!query) return;
     if (!apiKey) {
       setSearchError("Configura tu YouTube API Key en ajustes para buscar.");
@@ -388,7 +394,9 @@ function Dashboard() {
     try {
       // Modo karaoke: añade la palabra automáticamente si no está escrita
       const finalQuery =
-        karaokeMode && !/karaoke/i.test(query) ? `${query} karaoke` : query;
+        (forceExtra || karaokeMode) && !/karaoke|live|en vivo/i.test(query)
+          ? `${query} karaoke`
+          : query;
       setResults(await searchYouTube(finalQuery, apiKey));
     } catch (err) {
       setResults([]);
@@ -398,6 +406,17 @@ function Dashboard() {
     } finally {
       setSearching(false);
     }
+  };
+
+  const runSearch = () => doSearch(searchQuery);
+
+  /** Busca una versión alternativa (karaoke / en vivo) de una canción bloqueada. */
+  const searchAlternative = (title: string) => {
+    const clean = title.replace(/\s*[-–|(].*$/, "").trim() || title;
+    const q = `${clean} karaoke live`;
+    setSearchQuery(q);
+    void doSearch(q, true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const saveApiKey = () => {
@@ -930,7 +949,24 @@ function Dashboard() {
                 <span className="w-6 shrink-0 text-center font-mono text-sm text-primary">
                   {index + 1}
                 </span>
-                <span className="min-w-0 flex-1 truncate text-sm">{track.title}</span>
+                <span className="min-w-0 flex-1 truncate text-sm">
+                  {track.title}
+                  {blockedIds.includes(track.videoId) && (
+                    <span className="ml-2 rounded-full border border-destructive/50 bg-destructive/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-destructive">
+                      No reproducible / Restringida
+                    </span>
+                  )}
+                </span>
+                {blockedIds.includes(track.videoId) && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="shrink-0 text-xs"
+                    onClick={() => searchAlternative(track.title)}
+                  >
+                    Buscar versión Karaoke / En vivo
+                  </Button>
+                )}
                 <Button
                   size="icon"
                   variant="ghost"
@@ -983,21 +1019,37 @@ function Dashboard() {
                   >
                     <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
                       {track.title}
+                      {blockedIds.includes(track.videoId) && (
+                        <span className="ml-2 rounded-full border border-destructive/50 bg-destructive/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-destructive">
+                          No reproducible / Restringida
+                        </span>
+                      )}
                     </span>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      aria-label="Volver a la cola"
-                      onClick={() => {
-                        setQueue((q) => [
-                          ...q,
-                          { ...track, id: `${track.videoId}-${Date.now()}` },
-                        ]);
-                        setStatus(`En cola de nuevo: ${track.title}`);
-                      }}
-                    >
-                      <ListPlus className="size-4" />
-                    </Button>
+                    {blockedIds.includes(track.videoId) ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="shrink-0 text-xs"
+                        onClick={() => searchAlternative(track.title)}
+                      >
+                        Buscar versión Karaoke / En vivo
+                      </Button>
+                    ) : (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        aria-label="Volver a la cola"
+                        onClick={() => {
+                          setQueue((q) => [
+                            ...q,
+                            { ...track, id: `${track.videoId}-${Date.now()}` },
+                          ]);
+                          setStatus(`En cola de nuevo: ${track.title}`);
+                        }}
+                      >
+                        <ListPlus className="size-4" />
+                      </Button>
+                    )}
                   </li>
                 ))}
               </ul>

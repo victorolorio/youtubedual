@@ -113,7 +113,10 @@ function PlayerScreen() {
 
   /** Escribe un evento para la consola (funciona entre ventanas vía localStorage). */
   const writeEvent = useCallback(
-    (kind: TvEvent["kind"], extra?: { code?: number; title?: string }) => {
+    (
+      kind: TvEvent["kind"],
+      extra?: { code?: number; title?: string; videoId?: string },
+    ) => {
       try {
         window.localStorage.setItem(
           EVENT_STORAGE,
@@ -457,15 +460,34 @@ function PlayerScreen() {
         }
         if (data.event === "onError" && typeof data.info === "number") {
           const code = data.info;
-          const activeState = decksRef.current[activeDeckRef.current];
+          const idx = activeDeckRef.current;
+          const activeState = decksRef.current[idx];
           const errorTitle = activeState.title || activeState.videoId;
-          setEmbedError(
-            code === 101 || code === 150
-              ? "Canción con restricción de autor, pasando a la siguiente…"
-              : `Error de reproducción de YouTube (código ${code})`,
-          );
-          window.setTimeout(() => setEmbedError(null), 1000);
-          writeEvent("embed_error", { code, title: errorTitle });
+          const restricted = code === 101 || code === 150 || code === 5;
+
+          // La TV nunca muestra el error de YouTube: se oculta el iframe y se
+          // avisa solo al panel de DJ, que decide la siguiente pista.
+          if (restricted) {
+            setEmbedError(null);
+          } else {
+            setEmbedError(`Error de reproducción (código ${code})`);
+            window.setTimeout(() => setEmbedError(null), 1000);
+          }
+
+          clearTimers();
+          sendDeck(idx, "pauseVideo");
+          setDecks((prev) => {
+            const copy: [DeckState, DeckState] = [prev[0], prev[1]];
+            copy[idx] = { videoId: "", title: "" };
+            decksRef.current = copy;
+            return copy;
+          });
+
+          writeEvent("embed_error", {
+            code,
+            title: errorTitle,
+            videoId: activeState.videoId,
+          });
           channelRef.current?.postMessage({
             type: "embed_error",
             videoId: activeState.videoId,
