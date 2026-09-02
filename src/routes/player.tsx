@@ -152,6 +152,34 @@ function PlayerScreen() {
     setNeedsAudioClick(false);
   };
 
+  const [controlsVisible, setControlsVisible] = useState(true);
+
+  const toggleFullscreen = useCallback(() => {
+    if (document.fullscreenElement) {
+      void document.exitFullscreen();
+    } else {
+      void document.documentElement.requestFullscreen().catch(() => undefined);
+    }
+  }, []);
+
+  // Ocultar el botón flotante tras 2 s sin mover el mouse
+  useEffect(() => {
+    let timer = window.setTimeout(() => setControlsVisible(false), 2000);
+    const onMove = () => {
+      setControlsVisible(true);
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => setControlsVisible(false), 2000);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("touchstart", onMove);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("touchstart", onMove);
+    };
+  }, []);
+
+
   // Fondo negro persistente
   useEffect(() => {
     document.body.style.overflow = "hidden";
