@@ -142,6 +142,8 @@ function Dashboard() {
   const [tvOnline, setTvOnline] = useState(false);
   const [history, setHistory] = useState<QueueTrack[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
+  /** IDs de video bloqueados por derechos (no reproducibles). */
+  const [blockedIds, setBlockedIds] = useState<string[]>([]);
   const [muted, setMuted] = useState(false);
   const [crossfadeMs, setCrossfadeMs] = useState(2000);
   const [activeDeck, setActiveDeck] = useState<DeckId>("A");
