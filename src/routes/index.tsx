@@ -1019,21 +1019,37 @@ function Dashboard() {
                   >
                     <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
                       {track.title}
+                      {blockedIds.includes(track.videoId) && (
+                        <span className="ml-2 rounded-full border border-destructive/50 bg-destructive/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-destructive">
+                          No reproducible / Restringida
+                        </span>
+                      )}
                     </span>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      aria-label="Volver a la cola"
-                      onClick={() => {
-                        setQueue((q) => [
-                          ...q,
-                          { ...track, id: `${track.videoId}-${Date.now()}` },
-                        ]);
-                        setStatus(`En cola de nuevo: ${track.title}`);
-                      }}
-                    >
-                      <ListPlus className="size-4" />
-                    </Button>
+                    {blockedIds.includes(track.videoId) ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="shrink-0 text-xs"
+                        onClick={() => searchAlternative(track.title)}
+                      >
+                        Buscar versión Karaoke / En vivo
+                      </Button>
+                    ) : (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        aria-label="Volver a la cola"
+                        onClick={() => {
+                          setQueue((q) => [
+                            ...q,
+                            { ...track, id: `${track.videoId}-${Date.now()}` },
+                          ]);
+                          setStatus(`En cola de nuevo: ${track.title}`);
+                        }}
+                      >
+                        <ListPlus className="size-4" />
+                      </Button>
+                    )}
                   </li>
                 ))}
               </ul>
