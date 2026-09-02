@@ -453,6 +453,25 @@ function Dashboard() {
             </Button>
           </form>
 
+          <div className="mt-3 flex items-center gap-3 rounded-xl border border-border p-3">
+            <Switch
+              id="karaoke-mode"
+              checked={karaokeMode}
+              onCheckedChange={(checked) => {
+                setKaraokeMode(checked);
+                window.localStorage.setItem(
+                  KARAOKE_MODE_STORAGE,
+                  checked ? "1" : "0",
+                );
+              }}
+            />
+            <Label htmlFor="karaoke-mode" className="text-sm">
+              {karaokeMode
+                ? "Modo karaoke (agrega «karaoke» automáticamente)"
+                : "Modo video normal"}
+            </Label>
+          </div>
+
           {!apiKey && (
             <div className="mt-3 flex items-center gap-2 rounded-xl border border-dashed border-border p-3 text-sm text-muted-foreground">
               <KeyRound className="size-4 shrink-0 text-primary" />
@@ -630,6 +649,8 @@ function Dashboard() {
               const text = screenMessage.trim();
               send({ type: "message", text });
               sendStorageCommand({ action: "MESSAGE", text, timestamp: Date.now() });
+              sendStorageMessage(text);
+              ensureTvOpen();
               setStatus(text ? `Mensaje enviado: «${text}»` : "Mensaje limpiado.");
             }}
           >
@@ -654,6 +675,7 @@ function Dashboard() {
                     text: "",
                     timestamp: Date.now(),
                   });
+                  sendStorageMessage("");
                 }}
               >
                 Limpiar
