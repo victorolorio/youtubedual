@@ -440,25 +440,35 @@ function Dashboard() {
   };
 
   const next = useCallback(() => {
+    // Guardia: evita dobles saltos (BroadcastChannel + storage llegan juntos).
+    if (Date.now() - lastAdvanceRef.current < 1200) return;
+    lastAdvanceRef.current = Date.now();
+
     const playing = currentRef.current;
     if (playing) {
       setHistory((h) => [playing, ...h.filter((t) => t.id !== playing.id)].slice(0, 30));
     }
-    const [head, ...rest] = queueRef.current;
-    if (!head) {
-      setCurrent(null);
-      setIsPlaying(false);
-      setDuration(0);
-      setElapsed(0);
-      send({ type: "clear" });
-      sendStorageCommand({ action: "CLEAR", timestamp: Date.now() });
-      setStatus("La cola está vacía.");
-      return;
-    }
-    // Solo se extrae el primer elemento; el resto conserva su orden.
-    queueRef.current = rest;
-    setQueue(rest);
-    playTrackRef.current(head);
+
+    // Actualización funcional: nunca se vacía la cola, solo se extrae la cabeza.
+    setQueue((prev) => {
+      if (prev.length === 0) {
+        queueRef.current = [];
+        persistQueue([]);
+        setCurrent(null);
+        setIsPlaying(false);
+        setDuration(0);
+        setElapsed(0);
+        send({ type: "clear" });
+        sendStorageCommand({ action: "CLEAR", timestamp: Date.now() });
+        setStatus("La cola está vacía.");
+        return [];
+      }
+      const [head, ...rest] = prev;
+      queueRef.current = rest;
+      persistQueue(rest);
+      playTrackRef.current(head!);
+      return rest;
+    });
   }, [send]);
 
   /** Salto en la barra de tiempo: envía SEEK_TO a la TV al instante. */
