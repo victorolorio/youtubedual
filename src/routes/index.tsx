@@ -143,8 +143,11 @@ function Dashboard() {
   const [history, setHistory] = useState<QueueTrack[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [muted, setMuted] = useState(false);
+  const [crossfadeMs, setCrossfadeMs] = useState(2000);
+  const [activeDeck, setActiveDeck] = useState<DeckId>("A");
   const mutedRef = useRef(false);
   const preMuteRef = useRef(80);
+
 
 
   const send = useCallback((message: TvMessage) => {
