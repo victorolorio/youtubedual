@@ -30,6 +30,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
   COMMAND_STORAGE,
+  CROSSFADE_STORAGE,
   EVENT_STORAGE,
   MESSAGE_STORAGE,
   VOLUME_STORAGE,
@@ -38,6 +39,7 @@ import {
   formatTime,
   parseVideoId,
   searchYouTube,
+  type DeckId,
   type QueueTrack,
   type TvCommand,
   type TvEvent,
@@ -48,6 +50,14 @@ import {
 const API_KEY_STORAGE = "youtube_api_key";
 const AUTONEXT_STORAGE = "tv_auto_next";
 const KARAOKE_MODE_STORAGE = "tv_karaoke_mode";
+
+const CROSSFADE_OPTIONS = [
+  { label: "Corte directo", ms: 0 },
+  { label: "1 s", ms: 1000 },
+  { label: "2 s", ms: 2000 },
+  { label: "3 s", ms: 3000 },
+];
+
 
 function sendStorageMessage(text: string) {
   try {
