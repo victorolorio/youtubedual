@@ -633,8 +633,9 @@ function PlayerScreen() {
       </button>
 
       {message && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 p-6">
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 px-6 pb-6 md:px-10 md:pb-10">
           <div className="tv-ticker mx-auto max-w-4xl rounded-2xl border border-white/10 bg-black/55 px-6 py-4 backdrop-blur-md">
+
             <p className="truncate text-center text-base text-white/85 md:text-2xl">
               {message}
             </p>
