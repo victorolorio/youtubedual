@@ -86,6 +86,15 @@ function sendStorageVolume(volume: number) {
   }
 }
 
+function sendStorageCrossfade(ms: number) {
+  try {
+    window.localStorage.setItem(CROSSFADE_STORAGE, String(ms));
+  } catch {
+    /* almacenamiento no disponible */
+  }
+}
+
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
