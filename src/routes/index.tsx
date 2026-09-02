@@ -175,6 +175,7 @@ function Dashboard() {
   const autoNextRef = useRef(autoNext);
   const lastSkipRef = useRef(0);
   const lastAliveRef = useRef(0);
+  const lastAdvanceRef = useRef(0);
   currentRef.current = current;
   isPlayingRef.current = isPlaying;
   volumeRef.current = volume;
