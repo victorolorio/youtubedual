@@ -770,7 +770,7 @@ function Dashboard() {
             />
             <div className="flex gap-2">
               <Button type="submit" className="flex-1">
-                <Send className="size-4" /> Enviar a la TV
+                <Send className="size-4" /> Proyectar
               </Button>
               <Button
                 type="button"
@@ -784,10 +784,12 @@ function Dashboard() {
                     timestamp: Date.now(),
                   });
                   sendStorageMessage("");
+                  setStatus("Mensaje quitado de la TV.");
                 }}
               >
-                Limpiar
+                Quitar
               </Button>
+
             </div>
           </form>
         </section>
