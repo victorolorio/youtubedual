@@ -387,14 +387,9 @@ function PlayerScreen() {
         </div>
       )}
 
-      {(title || message) && (
+      {message && (
         <div className="pointer-events-none absolute inset-x-0 bottom-0 p-6">
           <div className="mx-auto max-w-4xl rounded-2xl border border-white/10 bg-black/55 px-6 py-4 backdrop-blur-md">
-            {title && (
-              <p className="truncate text-lg font-semibold text-white/90 md:text-2xl">
-                Sonando ahora: {title}
-              </p>
-            )}
             {message && (
               <p className="mt-1 truncate text-base text-white/70 md:text-xl">{message}</p>
             )}
