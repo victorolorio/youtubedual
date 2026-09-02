@@ -147,6 +147,7 @@ function Dashboard() {
   const [muted, setMuted] = useState(false);
   const [crossfadeMs, setCrossfadeMs] = useState(2000);
   const [activeDeck, setActiveDeck] = useState<DeckId>("A");
+  const durationRef = useRef(0);
   const mutedRef = useRef(false);
   const preMuteRef = useRef(80);
 
@@ -168,6 +169,7 @@ function Dashboard() {
   isPlayingRef.current = isPlaying;
   volumeRef.current = volume;
   queueRef.current = queue;
+  durationRef.current = duration;
   autoNextRef.current = autoNext;
 
   useEffect(() => {
@@ -443,9 +445,22 @@ function Dashboard() {
       setStatus("La cola está vacía.");
       return;
     }
+    // Solo se extrae el primer elemento; el resto conserva su orden.
+    queueRef.current = rest;
     setQueue(rest);
     playTrackRef.current(head);
   }, [send]);
+
+  /** Salto en la barra de tiempo: envía SEEK_TO a la TV al instante. */
+  const seekTo = useCallback(
+    (seconds: number) => {
+      const target = Math.max(0, Math.min(seconds, durationRef.current || seconds));
+      setElapsed(target);
+      send({ type: "seek", seconds: target });
+      sendStorageCommand({ action: "SEEK_TO", seconds: target, timestamp: Date.now() });
+    },
+    [send],
+  );
 
   const nextRef = useRef(next);
   nextRef.current = next;
@@ -707,10 +722,22 @@ function Dashboard() {
               {formatTime(elapsed)} / {formatTime(duration)}
             </p>
           </div>
-          <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
-            <div
-              className="h-full rounded-full bg-primary transition-all"
-              style={{ width: duration > 0 ? `${(elapsed / duration) * 100}%` : "0%" }}
+          <div className="mt-4">
+            <input
+              type="range"
+              min={0}
+              max={Math.max(1, Math.floor(duration))}
+              step={1}
+              value={Math.min(Math.floor(elapsed), Math.max(1, Math.floor(duration)))}
+              disabled={duration <= 0}
+              aria-label="Barra de tiempo"
+              onChange={(e) => seekTo(Number(e.target.value))}
+              className="h-2 w-full cursor-pointer appearance-none rounded-full bg-secondary accent-primary disabled:cursor-not-allowed disabled:opacity-50"
+              style={{
+                backgroundImage: `linear-gradient(to right, var(--color-primary) ${
+                  duration > 0 ? (elapsed / duration) * 100 : 0
+                }%, var(--color-secondary) 0%)`,
+              }}
             />
           </div>
 
