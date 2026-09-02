@@ -702,10 +702,27 @@ function Dashboard() {
             >
               <RotateCcw className="size-4" /> Reiniciar
             </Button>
+            <Button
+              variant={muted ? "default" : "outline"}
+              onClick={toggleMute}
+              aria-label="Silenciar"
+            >
+              {muted ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
+              {muted ? "Sin sonido" : "Mute"}
+            </Button>
             <span className="ml-auto text-xs text-muted-foreground">
               {isPlaying ? "● En reproducción" : "❚❚ En pausa"}
             </span>
           </div>
+
+          <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-border p-3 text-xs text-muted-foreground">
+            <Keyboard className="size-4 text-primary" />
+            <span><kbd className="rounded bg-secondary px-1.5 py-0.5 font-mono">Espacio</kbd> play/pausa</span>
+            <span><kbd className="rounded bg-secondary px-1.5 py-0.5 font-mono">→</kbd> siguiente</span>
+            <span><kbd className="rounded bg-secondary px-1.5 py-0.5 font-mono">↑ ↓</kbd> volumen ±5%</span>
+            <span><kbd className="rounded bg-secondary px-1.5 py-0.5 font-mono">M</kbd> mute</span>
+          </div>
+
 
           <div className="mt-4 flex items-center gap-3 rounded-xl border border-border p-3">
             <Switch
