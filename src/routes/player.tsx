@@ -588,7 +588,8 @@ function PlayerScreen() {
 
 
       {embedError && (
-        <div className="pointer-events-none absolute inset-x-0 top-8 z-20 flex justify-center px-6">
+        <div className="pointer-events-none absolute inset-x-0 top-6 z-20 flex justify-center px-6 md:top-10 md:px-10">
+
           <p className="rounded-full border border-red-500/40 bg-red-950/80 px-6 py-3 text-sm font-semibold text-red-200 backdrop-blur-md">
             {embedError}
           </p>
