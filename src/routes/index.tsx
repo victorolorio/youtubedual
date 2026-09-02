@@ -212,7 +212,12 @@ function Dashboard() {
   }, []);
 
   // Persistencia inmediata de la cola y de la pista actual.
+  const restoredRef = useRef(false);
   useEffect(() => {
+    if (!restoredRef.current) {
+      restoredRef.current = true;
+      return;
+    }
     persistQueue(queue);
   }, [queue]);
 
