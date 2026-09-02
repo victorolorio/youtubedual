@@ -42,6 +42,18 @@ import {
 
 const API_KEY_STORAGE = "youtube_api_key";
 const AUTONEXT_STORAGE = "tv_auto_next";
+const KARAOKE_MODE_STORAGE = "tv_karaoke_mode";
+
+function sendStorageMessage(text: string) {
+  try {
+    window.localStorage.setItem(
+      MESSAGE_STORAGE,
+      JSON.stringify({ text, timestamp: Date.now() }),
+    );
+  } catch {
+    /* almacenamiento no disponible */
+  }
+}
 
 function sendStorageCommand(cmd: TvCommand) {
   try {
@@ -102,6 +114,7 @@ function Dashboard() {
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [autoNext, setAutoNext] = useState(true);
+  const [karaokeMode, setKaraokeMode] = useState(true);
   const [tvOnline, setTvOnline] = useState(false);
 
   const send = useCallback((message: TvMessage) => {
