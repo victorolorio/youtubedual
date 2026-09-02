@@ -69,7 +69,7 @@ function PlayerScreen() {
   const endedSentRef = useRef(false);
 
   /** Escribe un evento para la consola (funciona entre ventanas vía localStorage). */
-  const writeEvent = useCallback((kind: TvEvent["kind"]) => {
+  const writeEvent = useCallback((kind: TvEvent["kind"], extra?: { code?: number; title?: string }) => {
     try {
       window.localStorage.setItem(
         EVENT_STORAGE,
@@ -79,6 +79,7 @@ function PlayerScreen() {
           currentTime: progressRef.current.currentTime,
           playing: progressRef.current.playing,
           timestamp: Date.now(),
+          ...extra,
         } satisfies TvEvent),
       );
     } catch {
@@ -271,9 +272,12 @@ function PlayerScreen() {
           const errorTitle = titleRef.current || videoIdRef.current;
           setEmbedError(
             code === 101 || code === 150
-              ? "Este video no permite reproducción embebida"
+              ? "Canción con restricción de autor, pasando a la siguiente…"
               : `Error de reproducción de YouTube (código ${code})`,
           );
+          // No dejar el aviso más de 1 segundo en pantalla
+          window.setTimeout(() => setEmbedError(null), 1000);
+          writeEvent("embed_error", { code, title: errorTitle });
           channelRef.current?.postMessage({
             type: "embed_error",
             videoId: videoIdRef.current,

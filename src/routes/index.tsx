@@ -152,6 +152,12 @@ function Dashboard() {
       setDuration(ev.duration);
       setElapsed(ev.currentTime);
       setIsPlaying(ev.playing);
+      if (ev.kind === "embed_error") {
+        toast.error("Canción con restricción de autor, pasando a la siguiente");
+        setStatus("Canción con restricción de autor, pasando a la siguiente");
+        window.setTimeout(() => nextRef.current(), 300);
+        return;
+      }
       if (ev.kind === "ended" && autoNextRef.current) {
         setStatus("Canción terminada. Pasando a la siguiente…");
         window.setTimeout(() => nextRef.current(), 600);

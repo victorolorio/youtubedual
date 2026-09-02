@@ -16,7 +16,9 @@ export type TvCommand =
 
 /** Eventos que la TV envía de vuelta a la consola. */
 export type TvEvent = {
-  kind: "heartbeat" | "ended";
+  kind: "heartbeat" | "ended" | "embed_error";
+  code?: number;
+  title?: string;
   duration: number;
   currentTime: number;
   playing: boolean;
@@ -100,7 +102,7 @@ export async function searchYouTube(
   query: string,
   apiKey: string,
 ): Promise<YouTubeSearchResult[]> {
-  const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=10&q=${encodeURIComponent(
+  const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoEmbeddable=true&maxResults=12&q=${encodeURIComponent(
     query,
   )}&key=${encodeURIComponent(apiKey)}`;
   const res = await fetch(url);
