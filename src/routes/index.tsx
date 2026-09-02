@@ -190,6 +190,8 @@ function Dashboard() {
       setDuration(ev.duration);
       setElapsed(ev.currentTime);
       setIsPlaying(ev.playing);
+      if (ev.deck) setActiveDeck(ev.deck);
+
       if (ev.kind === "embed_error") {
         if (Date.now() - lastSkipRef.current < 3000) return;
         lastSkipRef.current = Date.now();
