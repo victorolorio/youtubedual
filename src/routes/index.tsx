@@ -238,6 +238,8 @@ function Dashboard() {
         setDuration(data.duration);
         setElapsed(data.currentTime);
         setIsPlaying(data.playing);
+        if (data.deck) setActiveDeck(data.deck);
+
       }
 
       if (data.type === "embed_error") {
