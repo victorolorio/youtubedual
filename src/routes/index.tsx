@@ -253,12 +253,8 @@ function Dashboard() {
       }
 
       if (data.type === "embed_error") {
-        if (Date.now() - lastSkipRef.current < 3000) return;
-        lastSkipRef.current = Date.now();
-        // Video bloqueado para embeber: avisar y saltar a la siguiente canción
-        toast.error("Canción con restricción de autor, pasando a la siguiente");
-        setStatus("Canción con restricción de autor, pasando a la siguiente");
-        window.setTimeout(() => nextRef.current(), 300);
+        // Video bloqueado para embeber: avisar solo al DJ y saltar
+        handleEmbedError({ title: data.title, videoId: data.videoId });
       }
       if (data.type === "request_state") {
         // La TV se abrió después: reenviar pista actual, acción y volumen
