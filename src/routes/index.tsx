@@ -176,7 +176,11 @@ function Dashboard() {
     if (savedAuto != null) setAutoNext(savedAuto === "1");
     const savedKaraoke = window.localStorage.getItem(KARAOKE_MODE_STORAGE);
     if (savedKaraoke != null) setKaraokeMode(savedKaraoke === "1");
+    const savedFade = Number(window.localStorage.getItem(CROSSFADE_STORAGE));
+    if (Number.isFinite(savedFade) && savedFade >= 0) setCrossfadeMs(savedFade);
+    else sendStorageCrossfade(2000);
   }, []);
+
 
   // Eventos que llegan desde la ventana de TV (latido + fin de canción)
   useEffect(() => {
