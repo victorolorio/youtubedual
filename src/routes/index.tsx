@@ -140,6 +140,8 @@ function Dashboard() {
     setKeyDraft(saved);
     const savedAuto = window.localStorage.getItem(AUTONEXT_STORAGE);
     if (savedAuto != null) setAutoNext(savedAuto === "1");
+    const savedKaraoke = window.localStorage.getItem(KARAOKE_MODE_STORAGE);
+    if (savedKaraoke != null) setKaraokeMode(savedKaraoke === "1");
   }, []);
 
   // Eventos que llegan desde la ventana de TV (latido + fin de canción)
@@ -335,7 +337,10 @@ function Dashboard() {
     setSearching(true);
     setSearchError(null);
     try {
-      setResults(await searchYouTube(query, apiKey));
+      // Modo karaoke: añade la palabra automáticamente si no está escrita
+      const finalQuery =
+        karaokeMode && !/karaoke/i.test(query) ? `${query} karaoke` : query;
+      setResults(await searchYouTube(finalQuery, apiKey));
     } catch (err) {
       setResults([]);
       setSearchError(
