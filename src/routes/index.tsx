@@ -117,6 +117,12 @@ function Dashboard() {
   const [autoNext, setAutoNext] = useState(true);
   const [karaokeMode, setKaraokeMode] = useState(true);
   const [tvOnline, setTvOnline] = useState(false);
+  const [history, setHistory] = useState<QueueTrack[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [muted, setMuted] = useState(false);
+  const mutedRef = useRef(false);
+  const preMuteRef = useRef(80);
+
 
   const send = useCallback((message: TvMessage) => {
     console.log("[TV channel] enviando", message);
