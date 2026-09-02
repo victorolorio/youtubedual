@@ -50,6 +50,16 @@ import {
 const API_KEY_STORAGE = "youtube_api_key";
 const AUTONEXT_STORAGE = "tv_auto_next";
 const KARAOKE_MODE_STORAGE = "tv_karaoke_mode";
+const QUEUE_STORAGE = "dj_queue";
+const CURRENT_STORAGE = "dj_current";
+
+function persistQueue(list: QueueTrack[]) {
+  try {
+    window.localStorage.setItem(QUEUE_STORAGE, JSON.stringify(list));
+  } catch {
+    /* almacenamiento no disponible */
+  }
+}
 
 const CROSSFADE_OPTIONS = [
   { label: "Corte directo", ms: 0 },
