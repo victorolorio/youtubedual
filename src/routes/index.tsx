@@ -1113,7 +1113,79 @@ function Dashboard() {
         </section>
         </div>
 
-        <aside className="panel-surface h-fit rounded-2xl p-5 lg:sticky lg:top-6">
+        <div className="min-w-0 space-y-6 lg:sticky lg:top-6">
+        <section className="panel-surface rounded-2xl p-5">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+              Bandeja de pedidos
+            </h2>
+            <span className="rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground">
+              {requests.length}
+            </span>
+          </div>
+
+          <div className="mt-3 flex items-center gap-3 rounded-xl border border-border p-3">
+            <Switch
+              id="jukebox-mode"
+              checked={jukeboxMode}
+              onCheckedChange={(checked) => {
+                setJukeboxMode(checked);
+                window.localStorage.setItem("dj_jukebox_mode", checked ? "1" : "0");
+              }}
+            />
+            <Label htmlFor="jukebox-mode" className="text-sm">
+              Modo Rocola Automática
+              <span className="block text-xs text-muted-foreground">
+                {jukeboxMode
+                  ? "Los pedidos entran solos a la cola"
+                  : "Modo moderado: tú apruebas cada pedido"}
+              </span>
+            </Label>
+          </div>
+
+          <ul className="mt-3 space-y-2 max-h-[40vh] overflow-y-auto">
+            {requests.length === 0 && (
+              <li className="rounded-xl border border-dashed border-border p-5 text-center text-xs text-muted-foreground">
+                Sin pedidos del público por ahora.
+              </li>
+            )}
+            {requests.map((req) => (
+              <li
+                key={req.id}
+                className="flex gap-2 rounded-xl border border-border bg-card p-2"
+              >
+                {req.thumbnail_url && (
+                  <img
+                    src={req.thumbnail_url}
+                    alt={`Miniatura de ${req.song_title}`}
+                    loading="lazy"
+                    className="h-12 w-20 shrink-0 rounded-md object-cover"
+                  />
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-semibold text-primary">
+                    {req.requester_name}
+                  </p>
+                  <p className="line-clamp-2 text-sm">{req.song_title}</p>
+                  <div className="mt-2 flex gap-2">
+                    <Button size="sm" onClick={() => void approveRequest(req)}>
+                      Aprobar (+ Cola)
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void rejectRequest(req)}
+                    >
+                      Rechazar
+                    </Button>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <aside className="panel-surface h-fit rounded-2xl p-5">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
             Cola de reproducción
           </h2>
