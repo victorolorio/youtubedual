@@ -173,6 +173,12 @@ function Dashboard() {
   const durationRef = useRef(0);
   const mutedRef = useRef(false);
   const preMuteRef = useRef(80);
+  /** Pedidos del público pendientes de moderación. */
+  const [requests, setRequests] = useState<KaraokeRequest[]>([]);
+  const [jukeboxMode, setJukeboxMode] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
+  const jukeboxRef = useRef(false);
+  jukeboxRef.current = jukeboxMode;
 
 
 
