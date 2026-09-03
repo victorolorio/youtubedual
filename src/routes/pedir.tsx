@@ -164,6 +164,69 @@ function RequestPage() {
     void loadMine(name);
   };
 
+  if (settingsLoading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="size-8 animate-spin text-primary" />
+      </main>
+    );
+  }
+
+  if (settings && !settings.requests_open) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background p-6">
+        <div className="w-full max-w-sm space-y-4 rounded-3xl border border-border bg-card p-8 text-center">
+          <Lock className="mx-auto size-10 text-muted-foreground" />
+          <h1 className="text-2xl font-bold">Cabina cerrada</h1>
+          <p className="text-sm text-muted-foreground">
+            La cabina de pedidos está cerrada en este momento. Vuelve a intentarlo más tarde.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  if (settings && !pinOk) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background p-6">
+        <div className="w-full max-w-sm space-y-4 rounded-3xl border border-border bg-card p-6 text-center">
+          <Lock className="mx-auto size-10 text-primary" />
+          <h1 className="text-2xl font-bold">PIN del día</h1>
+          <p className="text-sm text-muted-foreground">
+            Ingresa el PIN que aparece en la pantalla del local para poder pedir canciones.
+          </p>
+          <form
+            className="space-y-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const value = pinDraft.trim();
+              if (value.toLowerCase() !== settings.daily_pin.trim().toLowerCase()) {
+                setPinError("PIN incorrecto. Míralo en la pantalla del local.");
+                return;
+              }
+              window.localStorage.setItem(PIN_SESSION_STORAGE, settings.daily_pin);
+              setPinError(null);
+              setPinOk(true);
+            }}
+          >
+            <Input
+              value={pinDraft}
+              onChange={(e) => setPinDraft(e.target.value)}
+              placeholder="PIN"
+              aria-label="PIN del día"
+              inputMode="text"
+              className="h-12 text-center text-lg tracking-[0.4em]"
+            />
+            {pinError && <p className="text-sm text-destructive">{pinError}</p>}
+            <Button type="submit" size="lg" className="w-full shadow-glow">
+              Entrar
+            </Button>
+          </form>
+        </div>
+      </main>
+    );
+  }
+
   if (!name) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background p-6">
