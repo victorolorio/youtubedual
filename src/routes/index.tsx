@@ -1129,6 +1129,55 @@ function Dashboard() {
             </span>
           </div>
 
+          <div className="mt-3 space-y-3 rounded-xl border border-border p-3">
+            <div className="flex items-center gap-3">
+              <Switch
+                id="requests-open"
+                checked={settings?.requests_open ?? false}
+                onCheckedChange={(checked) => {
+                  setSettings((prev) => (prev ? { ...prev, requests_open: checked } : prev));
+                  void saveSettings({ requests_open: checked });
+                }}
+              />
+              <Label htmlFor="requests-open" className="text-sm">
+                Recepción de pedidos
+                <span className="block text-xs text-muted-foreground">
+                  {settings?.requests_open ? "Abierta" : "Cerrada"}
+                </span>
+              </Label>
+            </div>
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
+                <Label htmlFor="daily-pin" className="text-xs text-muted-foreground">
+                  PIN del día
+                </Label>
+                <Input
+                  id="daily-pin"
+                  value={settings?.daily_pin ?? ""}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setSettings((prev) => (prev ? { ...prev, daily_pin: value } : prev));
+                  }}
+                  onBlur={() => {
+                    if (settings?.daily_pin) void saveSettings({ daily_pin: settings.daily_pin });
+                  }}
+                  className="mt-1 tracking-[0.3em]"
+                />
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  const pin = randomPin();
+                  setSettings((prev) => (prev ? { ...prev, daily_pin: pin } : prev));
+                  void saveSettings({ daily_pin: pin });
+                }}
+              >
+                Generar
+              </Button>
+            </div>
+          </div>
+
+
           <div className="mt-3 flex items-center gap-3 rounded-xl border border-border p-3">
             <Switch
               id="jukebox-mode"
