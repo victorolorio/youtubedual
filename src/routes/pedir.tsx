@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
-import { Check, ListMusic, Loader2, Music4, Plus, Search } from "lucide-react";
+import { Check, ListMusic, Loader2, Lock, Music4, Plus, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
+import { PIN_SESSION_STORAGE, useKaraokeSettings } from "@/lib/karaoke-settings";
 import { searchYouTube, type YouTubeSearchResult } from "@/lib/tv-channel";
 
 const NAME_STORAGE = "pedir_nombre";
@@ -61,6 +62,25 @@ function RequestPage() {
   const [tab, setTab] = useState<"buscar" | "mis">("buscar");
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState<string | null>(null);
+  const { settings, loading: settingsLoading } = useKaraokeSettings();
+  const [pinDraft, setPinDraft] = useState("");
+  const [pinOk, setPinOk] = useState(false);
+  const [pinError, setPinError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPinOk(window.localStorage.getItem(PIN_SESSION_STORAGE) !== null);
+  }, []);
+
+  // Si el DJ cambia el PIN, la sesión guardada deja de valer.
+  useEffect(() => {
+    if (!settings) return;
+    const saved = window.localStorage.getItem(PIN_SESSION_STORAGE);
+    if (saved && saved !== settings.daily_pin) {
+      window.localStorage.removeItem(PIN_SESSION_STORAGE);
+      setPinOk(false);
+    }
+  }, [settings]);
+
 
   useEffect(() => {
     const saved = window.localStorage.getItem(NAME_STORAGE) ?? "";
@@ -143,6 +163,69 @@ function RequestPage() {
     window.setTimeout(() => setSent(false), 2200);
     void loadMine(name);
   };
+
+  if (settingsLoading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="size-8 animate-spin text-primary" />
+      </main>
+    );
+  }
+
+  if (settings && !settings.requests_open) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background p-6">
+        <div className="w-full max-w-sm space-y-4 rounded-3xl border border-border bg-card p-8 text-center">
+          <Lock className="mx-auto size-10 text-muted-foreground" />
+          <h1 className="text-2xl font-bold">Cabina cerrada</h1>
+          <p className="text-sm text-muted-foreground">
+            La cabina de pedidos está cerrada en este momento. Vuelve a intentarlo más tarde.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  if (settings && !pinOk) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background p-6">
+        <div className="w-full max-w-sm space-y-4 rounded-3xl border border-border bg-card p-6 text-center">
+          <Lock className="mx-auto size-10 text-primary" />
+          <h1 className="text-2xl font-bold">PIN del día</h1>
+          <p className="text-sm text-muted-foreground">
+            Ingresa el PIN que aparece en la pantalla del local para poder pedir canciones.
+          </p>
+          <form
+            className="space-y-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const value = pinDraft.trim();
+              if (value.toLowerCase() !== settings.daily_pin.trim().toLowerCase()) {
+                setPinError("PIN incorrecto. Míralo en la pantalla del local.");
+                return;
+              }
+              window.localStorage.setItem(PIN_SESSION_STORAGE, settings.daily_pin);
+              setPinError(null);
+              setPinOk(true);
+            }}
+          >
+            <Input
+              value={pinDraft}
+              onChange={(e) => setPinDraft(e.target.value)}
+              placeholder="PIN"
+              aria-label="PIN del día"
+              inputMode="text"
+              className="h-12 text-center text-lg tracking-[0.4em]"
+            />
+            {pinError && <p className="text-sm text-destructive">{pinError}</p>}
+            <Button type="submit" size="lg" className="w-full shadow-glow">
+              Entrar
+            </Button>
+          </form>
+        </div>
+      </main>
+    );
+  }
 
   if (!name) {
     return (
