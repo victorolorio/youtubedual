@@ -100,6 +100,9 @@ function PlayerScreen() {
   const [activeDeck, setActiveDeck] = useState<0 | 1>(0);
   const [opacities, setOpacities] = useState<[number, number]>([1, 0]);
   const [message, setMessage] = useState("");
+  /** Nombre de quien pidió la canción actual (overlay de 8 s). */
+  const [requester, setRequester] = useState<string | null>(null);
+  const requesterTimerRef = useRef<number | null>(null);
   const [needsAudioClick, setNeedsAudioClick] = useState(false);
   const [embedError, setEmbedError] = useState<string | null>(null);
   const [controlsVisible, setControlsVisible] = useState(true);
@@ -256,6 +259,16 @@ function PlayerScreen() {
           const activeVideo = decksRef.current[activeDeckRef.current].videoId;
           if (cmd.videoId && cmd.videoId !== activeVideo) {
             loadIntoIdleDeck(cmd.videoId, cmd.title ?? "");
+            if (requesterTimerRef.current) window.clearTimeout(requesterTimerRef.current);
+            if (cmd.requester) {
+              setRequester(cmd.requester);
+              requesterTimerRef.current = window.setTimeout(
+                () => setRequester(null),
+                8000,
+              );
+            } else {
+              setRequester(null);
+            }
           } else {
             sendActive("playVideo");
           }
@@ -726,6 +739,16 @@ function PlayerScreen() {
       >
         ⛶ Pantalla completa
       </button>
+
+      {requester && (
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex justify-center px-6 pt-6 md:pt-10">
+          <div className="tv-ticker rounded-2xl border border-primary/40 bg-black/70 px-8 py-4 backdrop-blur-md md:px-12 md:py-5">
+            <p className="text-center text-2xl font-bold text-white drop-shadow-lg md:text-4xl">
+              🎵 Petición de: {requester}
+            </p>
+          </div>
+        </div>
+      )}
 
       {message && (
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 px-6 pb-6 md:px-10 md:pb-10">

@@ -10,11 +10,17 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PedirRouteImport } from './routes/pedir'
 import { Route as PlayerRouteImport } from './routes/player'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PedirRoute = PedirRouteImport.update({
+  id: '/pedir',
+  path: '/pedir',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PlayerRoute = PlayerRouteImport.update({
@@ -25,27 +31,31 @@ const PlayerRoute = PlayerRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/pedir': typeof PedirRoute
   '/player': typeof PlayerRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/pedir': typeof PedirRoute
   '/player': typeof PlayerRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/pedir': typeof PedirRoute
   '/player': typeof PlayerRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/player'
+  fullPaths: '/' | '/pedir' | '/player'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/player'
-  id: '__root__' | '/' | '/player'
+  to: '/' | '/pedir' | '/player'
+  id: '__root__' | '/' | '/pedir' | '/player'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  PedirRoute: typeof PedirRoute
   PlayerRoute: typeof PlayerRoute
 }
 
@@ -56,6 +66,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pedir': {
+      id: '/pedir'
+      path: '/pedir'
+      fullPath: '/pedir'
+      preLoaderRoute: typeof PedirRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/player': {
@@ -70,6 +87,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  PedirRoute: PedirRoute,
   PlayerRoute: PlayerRoute,
 }
 export const routeTree = rootRouteImport

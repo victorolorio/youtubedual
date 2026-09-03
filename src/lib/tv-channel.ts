@@ -12,7 +12,7 @@ export const CROSSFADE_STORAGE = "tv_crossfade_ms";
 export type DeckId = "A" | "B";
 
 export type TvCommand =
-  | { action: "PLAY"; videoId: string; title?: string; timestamp: number }
+  | { action: "PLAY"; videoId: string; title?: string; requester?: string; timestamp: number }
   | { action: "PAUSE"; timestamp: number }
   | { action: "RESTART"; timestamp: number }
   | { action: "SEEK_TO"; seconds: number; timestamp: number }
@@ -38,10 +38,14 @@ export type QueueTrack = {
   id: string;
   videoId: string;
   title: string;
+  /** Nombre o mesa de quien pidió la canción desde el celular. */
+  requester?: string;
+  /** ID del pedido en la base de datos, si vino del público. */
+  requestId?: string;
 };
 
 export type TvMessage =
-  | { type: "play_video"; videoId: string; title: string }
+  | { type: "play_video"; videoId: string; title: string; requester?: string }
   | { type: "play" }
   | { type: "pause" }
   | { type: "restart" }

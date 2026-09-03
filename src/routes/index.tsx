@@ -11,6 +11,7 @@ import {
   Pause,
   Play,
   Plus,
+  QrCode,
   RotateCcw,
   Search,
   Send,
@@ -46,6 +47,19 @@ import {
   type TvMessage,
   type YouTubeSearchResult,
 } from "@/lib/tv-channel";
+import { supabase } from "@/integrations/supabase/client";
+import { QRCodeSVG } from "qrcode.react";
+
+type KaraokeRequest = {
+  id: string;
+  requester_name: string;
+  video_id: string;
+  song_title: string;
+  song_channel: string;
+  thumbnail_url: string;
+  status: string;
+  created_at: string;
+};
 
 const API_KEY_STORAGE = "youtube_api_key";
 const AUTONEXT_STORAGE = "tv_auto_next";
@@ -160,6 +174,12 @@ function Dashboard() {
   const durationRef = useRef(0);
   const mutedRef = useRef(false);
   const preMuteRef = useRef(80);
+  /** Pedidos del público pendientes de moderación. */
+  const [requests, setRequests] = useState<KaraokeRequest[]>([]);
+  const [jukeboxMode, setJukeboxMode] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
+  const jukeboxRef = useRef(false);
+  jukeboxRef.current = jukeboxMode;
 
 
 
@@ -366,14 +386,26 @@ function Dashboard() {
       setElapsed(0);
       console.log("[TV channel] emit play_video", track);
       // Sincronización dual: BroadcastChannel + comando persistente en localStorage
-      send({ type: "play_video", videoId: track.videoId, title: track.title });
+      send({
+        type: "play_video",
+        videoId: track.videoId,
+        title: track.title,
+        ...(track.requester ? { requester: track.requester } : {}),
+      });
       send({ type: "play" });
       sendStorageCommand({
         action: "PLAY",
         videoId: track.videoId,
         title: track.title,
+        ...(track.requester ? { requester: track.requester } : {}),
         timestamp: Date.now(),
       });
+      if (track.requestId) {
+        void supabase
+          .from("karaoke_requests")
+          .update({ status: "playing" })
+          .eq("id", track.requestId);
+      }
       ensureTvOpen();
       setStatus(`Reproduciendo «${track.title}».`);
     },
@@ -382,6 +414,95 @@ function Dashboard() {
 
   const playTrackRef = useRef(playTrack);
   playTrackRef.current = playTrack;
+
+  /** Convierte un pedido en pista y lo manda a la cola (o al aire si no hay nada). */
+  const enqueueRequest = useCallback((req: KaraokeRequest) => {
+    const track: QueueTrack = {
+      id: `${req.video_id}-${Date.now()}`,
+      videoId: req.video_id,
+      title: req.song_title,
+      requester: req.requester_name,
+      requestId: req.id,
+    };
+    if (!currentRef.current) {
+      playTrackRef.current(track);
+    } else {
+      setQueue((q) => {
+        const next = [...q, track];
+        persistQueue(next);
+        return next;
+      });
+    }
+  }, []);
+
+  const approveRequest = useCallback(
+    async (req: KaraokeRequest) => {
+      enqueueRequest(req);
+      setRequests((list) => list.filter((r) => r.id !== req.id));
+      await supabase
+        .from("karaoke_requests")
+        .update({ status: "approved" })
+        .eq("id", req.id);
+      toast.success(`Aprobado: ${req.song_title}`);
+    },
+    [enqueueRequest],
+  );
+
+  const rejectRequest = useCallback(async (req: KaraokeRequest) => {
+    setRequests((list) => list.filter((r) => r.id !== req.id));
+    await supabase
+      .from("karaoke_requests")
+      .update({ status: "rejected" })
+      .eq("id", req.id);
+    toast(`Rechazado: ${req.song_title}`);
+  }, []);
+
+  // Carga inicial + tiempo real de los pedidos del público
+  useEffect(() => {
+    const savedJukebox = window.localStorage.getItem("dj_jukebox_mode");
+    if (savedJukebox != null) setJukeboxMode(savedJukebox === "1");
+
+    let cancelled = false;
+    void supabase
+      .from("karaoke_requests")
+      .select("*")
+      .eq("status", "pending")
+      .order("created_at", { ascending: true })
+      .then(({ data }) => {
+        if (cancelled) return;
+        setRequests((data ?? []) as KaraokeRequest[]);
+      });
+
+    const channel = supabase
+      .channel("pedidos-cabina")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "karaoke_requests" },
+        (payload) => {
+          const req = payload.new as KaraokeRequest;
+          if (jukeboxRef.current) {
+            enqueueRequest(req);
+            void supabase
+              .from("karaoke_requests")
+              .update({ status: "approved" })
+              .eq("id", req.id);
+            toast.success(`🎤 ${req.requester_name} pidió: ${req.song_title}`);
+          } else {
+            setRequests((list) =>
+              list.some((r) => r.id === req.id) ? list : [...list, req],
+            );
+            toast(`Nuevo pedido de ${req.requester_name}`);
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      void supabase.removeChannel(channel);
+    };
+  }, [enqueueRequest]);
+
 
   const addToQueue = async () => {
     const videoId = parseVideoId(urlInput);
@@ -642,6 +763,10 @@ function Dashboard() {
             <Button size="lg" onClick={openTv} className="shadow-glow">
               <MonitorPlay className="size-5" />
               Abrir Pantalla TV
+            </Button>
+            <Button size="lg" variant="outline" onClick={() => setQrOpen(true)}>
+              <QrCode className="size-5" />
+              Código QR Clientes
             </Button>
             <Button
               size="icon"
@@ -993,7 +1118,79 @@ function Dashboard() {
         </section>
         </div>
 
-        <aside className="panel-surface h-fit rounded-2xl p-5 lg:sticky lg:top-6">
+        <div className="min-w-0 space-y-6 lg:sticky lg:top-6">
+        <section className="panel-surface rounded-2xl p-5">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+              Bandeja de pedidos
+            </h2>
+            <span className="rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground">
+              {requests.length}
+            </span>
+          </div>
+
+          <div className="mt-3 flex items-center gap-3 rounded-xl border border-border p-3">
+            <Switch
+              id="jukebox-mode"
+              checked={jukeboxMode}
+              onCheckedChange={(checked) => {
+                setJukeboxMode(checked);
+                window.localStorage.setItem("dj_jukebox_mode", checked ? "1" : "0");
+              }}
+            />
+            <Label htmlFor="jukebox-mode" className="text-sm">
+              Modo Rocola Automática
+              <span className="block text-xs text-muted-foreground">
+                {jukeboxMode
+                  ? "Los pedidos entran solos a la cola"
+                  : "Modo moderado: tú apruebas cada pedido"}
+              </span>
+            </Label>
+          </div>
+
+          <ul className="mt-3 space-y-2 max-h-[40vh] overflow-y-auto">
+            {requests.length === 0 && (
+              <li className="rounded-xl border border-dashed border-border p-5 text-center text-xs text-muted-foreground">
+                Sin pedidos del público por ahora.
+              </li>
+            )}
+            {requests.map((req) => (
+              <li
+                key={req.id}
+                className="flex gap-2 rounded-xl border border-border bg-card p-2"
+              >
+                {req.thumbnail_url && (
+                  <img
+                    src={req.thumbnail_url}
+                    alt={`Miniatura de ${req.song_title}`}
+                    loading="lazy"
+                    className="h-12 w-20 shrink-0 rounded-md object-cover"
+                  />
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-semibold text-primary">
+                    {req.requester_name}
+                  </p>
+                  <p className="line-clamp-2 text-sm">{req.song_title}</p>
+                  <div className="mt-2 flex gap-2">
+                    <Button size="sm" onClick={() => void approveRequest(req)}>
+                      Aprobar (+ Cola)
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void rejectRequest(req)}
+                    >
+                      Rechazar
+                    </Button>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <aside className="panel-surface h-fit rounded-2xl p-5">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
             Cola de reproducción
           </h2>
@@ -1138,6 +1335,7 @@ function Dashboard() {
             )}
           </div>
         </aside>
+        </div>
 
         </div>
 
@@ -1183,6 +1381,34 @@ function Dashboard() {
               <Button onClick={saveApiKey}>
                 <KeyRound className="size-4" /> Guardar
               </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {qrOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 text-center">
+            <h2 className="text-lg font-semibold">Pedidos del público</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Que tus clientes escaneen este código para pedir canciones.
+            </p>
+            <div className="mx-auto mt-5 w-fit rounded-2xl bg-white p-4">
+              <QRCodeSVG
+                value={`${typeof window !== "undefined" ? window.location.origin : ""}/pedir${
+                  apiKey ? `?k=${encodeURIComponent(apiKey)}` : ""
+                }`}
+                size={240}
+              />
+            </div>
+            <p className="mt-3 break-all text-xs text-muted-foreground">
+              {typeof window !== "undefined" ? `${window.location.origin}/pedir` : "/pedir"}
+            </p>
+            <div className="mt-5 flex justify-center gap-2">
+              <Button variant="outline" onClick={() => window.print()}>
+                Imprimir
+              </Button>
+              <Button onClick={() => setQrOpen(false)}>Cerrar</Button>
             </div>
           </div>
         </div>
