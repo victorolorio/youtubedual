@@ -1385,6 +1385,34 @@ function Dashboard() {
           </div>
         </div>
       ) : null}
+
+      {qrOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 text-center">
+            <h2 className="text-lg font-semibold">Pedidos del público</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Que tus clientes escaneen este código para pedir canciones.
+            </p>
+            <div className="mx-auto mt-5 w-fit rounded-2xl bg-white p-4">
+              <QRCodeSVG
+                value={`${typeof window !== "undefined" ? window.location.origin : ""}/pedir${
+                  apiKey ? `?k=${encodeURIComponent(apiKey)}` : ""
+                }`}
+                size={240}
+              />
+            </div>
+            <p className="mt-3 break-all text-xs text-muted-foreground">
+              {typeof window !== "undefined" ? `${window.location.origin}/pedir` : "/pedir"}
+            </p>
+            <div className="mt-5 flex justify-center gap-2">
+              <Button variant="outline" onClick={() => window.print()}>
+                Imprimir
+              </Button>
+              <Button onClick={() => setQrOpen(false)}>Cerrar</Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }
