@@ -240,6 +240,14 @@ function Dashboard() {
     }
   }, []);
 
+  // URL pública para el QR: guardada por el DJ o el origen actual.
+  useEffect(() => {
+    const saved = window.localStorage.getItem(PUBLIC_URL_STORAGE);
+    setPublicUrl(saved && saved.trim() ? saved.trim() : window.location.origin);
+  }, []);
+
+
+
   // Persistencia inmediata de la cola y de la pista actual.
   const restoredRef = useRef(false);
   useEffect(() => {
