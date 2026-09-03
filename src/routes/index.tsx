@@ -71,6 +71,8 @@ const AUTONEXT_STORAGE = "tv_auto_next";
 const KARAOKE_MODE_STORAGE = "tv_karaoke_mode";
 const QUEUE_STORAGE = "dj_queue";
 const CURRENT_STORAGE = "dj_current";
+const PUBLIC_URL_STORAGE = "dj_public_url";
+
 
 function persistQueue(list: QueueTrack[]) {
   try {
