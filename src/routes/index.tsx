@@ -1461,17 +1461,56 @@ function Dashboard() {
             <p className="mt-1 text-sm text-muted-foreground">
               Que tus clientes escaneen este código para pedir canciones.
             </p>
-            <div className="mx-auto mt-5 w-fit rounded-2xl bg-white p-4">
-              <QRCodeSVG
-                value={`${typeof window !== "undefined" ? window.location.origin : ""}/pedir${
-                  apiKey ? `?k=${encodeURIComponent(apiKey)}` : ""
-                }`}
-                size={240}
-              />
-            </div>
-            <p className="mt-3 break-all text-xs text-muted-foreground">
-              {typeof window !== "undefined" ? `${window.location.origin}/pedir` : "/pedir"}
-            </p>
+            {(() => {
+              const base = (publicUrl || "").trim().replace(/\/+$/, "");
+              const link = `${base}/pedir${apiKey ? `?k=${encodeURIComponent(apiKey)}` : ""}`;
+              return (
+                <>
+                  <div className="mt-4 text-left">
+                    <Label htmlFor="public-url" className="text-xs">
+                      URL Base Pública
+                    </Label>
+                    <Input
+                      id="public-url"
+                      value={publicUrl}
+                      placeholder="https://tu-proyecto.lovable.app"
+                      onChange={(e) => {
+                        setPublicUrl(e.target.value);
+                        try {
+                          window.localStorage.setItem(PUBLIC_URL_STORAGE, e.target.value);
+                        } catch {
+                          /* almacenamiento no disponible */
+                        }
+                      }}
+                      className="mt-1"
+                    />
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      Usa tu dominio publicado para que los clientes no vean “Access denied”.
+                    </p>
+                  </div>
+                  <div className="mx-auto mt-5 w-fit rounded-2xl bg-white p-4">
+                    <QRCodeSVG value={link} size={240} />
+                  </div>
+                  <p className="mt-3 break-all text-xs text-muted-foreground">{`${base}/pedir`}</p>
+                  <div className="mt-3 flex justify-center">
+                    <Button
+                      variant="secondary"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(link);
+                          toast.success("Enlace copiado");
+                        } catch {
+                          toast.error("No se pudo copiar el enlace");
+                        }
+                      }}
+                    >
+                      Copiar enlace
+                    </Button>
+                  </div>
+                </>
+              );
+            })()}
+
             <div className="mt-5 flex justify-center gap-2">
               <Button variant="outline" onClick={() => window.print()}>
                 Imprimir
