@@ -183,6 +183,7 @@ function Dashboard() {
   const [requests, setRequests] = useState<KaraokeRequest[]>([]);
   const [jukeboxMode, setJukeboxMode] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
+  const { settings, setSettings } = useKaraokeSettings();
   const jukeboxRef = useRef(false);
   jukeboxRef.current = jukeboxMode;
 
