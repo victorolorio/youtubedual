@@ -103,6 +103,10 @@ function PlayerScreen() {
   const [needsAudioClick, setNeedsAudioClick] = useState(false);
   const [embedError, setEmbedError] = useState<string | null>(null);
   const [controlsVisible, setControlsVisible] = useState(true);
+  /** Nonce por deck: cambiarlo remonta el iframe (recarga forzada). */
+  const [reloadNonce, setReloadNonce] = useState<[number, number]>([0, 0]);
+  /** Vigilancia de atascos: cuenta ticks sin avance de tiempo. */
+  const stallRef = useRef({ lastTime: -1, ticks: 0, reloads: 0 });
 
   const decksRef = useRef(decks);
   const activeDeckRef = useRef<0 | 1>(0);
