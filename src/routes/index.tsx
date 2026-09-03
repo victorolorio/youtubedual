@@ -1330,6 +1330,7 @@ function Dashboard() {
             )}
           </div>
         </aside>
+        </div>
 
         </div>
 
