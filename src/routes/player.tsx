@@ -103,6 +103,10 @@ function PlayerScreen() {
   const [needsAudioClick, setNeedsAudioClick] = useState(false);
   const [embedError, setEmbedError] = useState<string | null>(null);
   const [controlsVisible, setControlsVisible] = useState(true);
+  /** Nonce por deck: cambiarlo remonta el iframe (recarga forzada). */
+  const [reloadNonce, setReloadNonce] = useState<[number, number]>([0, 0]);
+  /** Vigilancia de atascos: cuenta ticks sin avance de tiempo. */
+  const stallRef = useRef({ lastTime: -1, ticks: 0, reloads: 0 });
 
   const decksRef = useRef(decks);
   const activeDeckRef = useRef<0 | 1>(0);
@@ -217,6 +221,8 @@ function PlayerScreen() {
       clearTimers();
       setEmbedError(null);
       endedSentRef.current = false;
+      stallRef.current = { lastTime: -1, ticks: 0, reloads: 0 };
+
 
       setDecks((prev) => {
         const copy: [DeckState, DeckState] = [prev[0], prev[1]];
@@ -538,6 +544,48 @@ function PlayerScreen() {
         writeEvent("ended");
       }
 
+      // --- Vigilancia de atascos (video "cargando" y nunca arranca) ---
+      const activeIdx = activeDeckRef.current;
+      const activeVideo = decksRef.current[activeIdx].videoId;
+      if (!activeVideo || endedSentRef.current) {
+        stallRef.current.lastTime = -1;
+        stallRef.current.ticks = 0;
+      } else {
+        const advanced =
+          progressRef.current.playing && currentTime > stallRef.current.lastTime + 0.05;
+        if (advanced) {
+          stallRef.current.lastTime = currentTime;
+          stallRef.current.ticks = 0;
+          stallRef.current.reloads = 0;
+        } else {
+          stallRef.current.lastTime = Math.max(stallRef.current.lastTime, currentTime);
+          stallRef.current.ticks += 1;
+          const t = stallRef.current.ticks;
+          if (t === 6) {
+            // 3 s sin avance: reintenta reproducir.
+            sendDeck(activeIdx, "playVideo");
+            sendDeck(activeIdx, "unMute");
+            sendDeck(activeIdx, "setVolume", [targetVolumeRef.current]);
+          } else if (t === 14 && stallRef.current.reloads < 2) {
+            // 7 s: recarga forzada del iframe del deck activo.
+            stallRef.current.reloads += 1;
+            stallRef.current.ticks = 0;
+            setReloadNonce((prev) => {
+              const copy: [number, number] = [prev[0], prev[1]];
+              copy[activeIdx] += 1;
+              return copy;
+            });
+          } else if (t >= 24) {
+            // Sigue trabado: saltar a la siguiente pista.
+            endedSentRef.current = true;
+            stallRef.current.ticks = 0;
+            writeEvent("ended");
+          }
+        }
+      }
+
+
+
       writeEvent("heartbeat");
       channelRef.current?.postMessage({
         type: "state",
@@ -562,7 +610,7 @@ function PlayerScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [applyCommand, clearTimers, sendActive, writeEvent]);
 
-  // Habilitar el canal de datos de cada deck al cambiar su vídeo
+  // Habilitar el canal de datos de cada deck al cambiar su vídeo o al recargarlo
   useEffect(() => {
     const timers: number[] = [];
     ([0, 1] as const).forEach((idx) => {
@@ -573,6 +621,11 @@ function PlayerScreen() {
             JSON.stringify({ event: "listening" }),
             "*",
           );
+          if (idx === activeDeckRef.current) {
+            sendDeck(idx, "playVideo");
+            sendDeck(idx, "unMute");
+            sendDeck(idx, "setVolume", [targetVolumeRef.current]);
+          }
         }, 1200),
       );
     });
@@ -588,7 +641,8 @@ function PlayerScreen() {
     );
     return () => timers.forEach((t) => window.clearTimeout(t));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [decks[0].videoId, decks[1].videoId]);
+  }, [decks[0].videoId, decks[1].videoId, reloadNonce[0], reloadNonce[1]]);
+
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const anyVideo = decks[0].videoId || decks[1].videoId;
@@ -609,7 +663,7 @@ function PlayerScreen() {
           {([0, 1] as const).map((idx) =>
             decks[idx].videoId ? (
               <iframe
-                key={`deck-${idx}-${decks[idx].videoId}`}
+                key={`deck-${idx}-${decks[idx].videoId}-${reloadNonce[idx]}`}
                 ref={deckRefs[idx]}
                 src={embedUrl(decks[idx].videoId, origin)}
                 title={decks[idx].title || `Deck ${deckLabel(idx)}`}
