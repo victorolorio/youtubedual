@@ -740,6 +740,16 @@ function PlayerScreen() {
         ⛶ Pantalla completa
       </button>
 
+      {requester && (
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex justify-center px-6 pt-6 md:pt-10">
+          <div className="tv-ticker rounded-2xl border border-primary/40 bg-black/70 px-8 py-4 backdrop-blur-md md:px-12 md:py-5">
+            <p className="text-center text-2xl font-bold text-white drop-shadow-lg md:text-4xl">
+              🎵 Petición de: {requester}
+            </p>
+          </div>
+        </div>
+      )}
+
       {message && (
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 px-6 pb-6 md:px-10 md:pb-10">
           <div className="tv-ticker mx-auto max-w-6xl rounded-2xl border border-white/15 bg-black/70 px-8 py-5 backdrop-blur-md md:px-12 md:py-6">
