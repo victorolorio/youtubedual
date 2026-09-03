@@ -259,6 +259,16 @@ function PlayerScreen() {
           const activeVideo = decksRef.current[activeDeckRef.current].videoId;
           if (cmd.videoId && cmd.videoId !== activeVideo) {
             loadIntoIdleDeck(cmd.videoId, cmd.title ?? "");
+            if (requesterTimerRef.current) window.clearTimeout(requesterTimerRef.current);
+            if (cmd.requester) {
+              setRequester(cmd.requester);
+              requesterTimerRef.current = window.setTimeout(
+                () => setRequester(null),
+                8000,
+              );
+            } else {
+              setRequester(null);
+            }
           } else {
             sendActive("playVideo");
           }
