@@ -183,6 +183,9 @@ function Dashboard() {
   const [requests, setRequests] = useState<KaraokeRequest[]>([]);
   const [jukeboxMode, setJukeboxMode] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
+  /** URL pública que se codifica en el QR (editable por el DJ). */
+  const [publicUrl, setPublicUrl] = useState("");
+
   const { settings, setSettings } = useKaraokeSettings();
   const jukeboxRef = useRef(false);
   jukeboxRef.current = jukeboxMode;
