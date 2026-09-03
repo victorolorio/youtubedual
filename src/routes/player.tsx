@@ -544,6 +544,48 @@ function PlayerScreen() {
         writeEvent("ended");
       }
 
+      // --- Vigilancia de atascos (video "cargando" y nunca arranca) ---
+      const activeIdx = activeDeckRef.current;
+      const activeVideo = decksRef.current[activeIdx].videoId;
+      if (!activeVideo || endedSentRef.current) {
+        stallRef.current.lastTime = -1;
+        stallRef.current.ticks = 0;
+      } else {
+        const advanced =
+          progressRef.current.playing && currentTime > stallRef.current.lastTime + 0.05;
+        if (advanced) {
+          stallRef.current.lastTime = currentTime;
+          stallRef.current.ticks = 0;
+          stallRef.current.reloads = 0;
+        } else {
+          stallRef.current.lastTime = Math.max(stallRef.current.lastTime, currentTime);
+          stallRef.current.ticks += 1;
+          const t = stallRef.current.ticks;
+          if (t === 6) {
+            // 3 s sin avance: reintenta reproducir.
+            sendDeck(activeIdx, "playVideo");
+            sendDeck(activeIdx, "unMute");
+            sendDeck(activeIdx, "setVolume", [targetVolumeRef.current]);
+          } else if (t === 14 && stallRef.current.reloads < 2) {
+            // 7 s: recarga forzada del iframe del deck activo.
+            stallRef.current.reloads += 1;
+            stallRef.current.ticks = 0;
+            setReloadNonce((prev) => {
+              const copy: [number, number] = [prev[0], prev[1]];
+              copy[activeIdx] += 1;
+              return copy;
+            });
+          } else if (t >= 24) {
+            // Sigue trabado: saltar a la siguiente pista.
+            endedSentRef.current = true;
+            stallRef.current.ticks = 0;
+            writeEvent("ended");
+          }
+        }
+      }
+
+
+
       writeEvent("heartbeat");
       channelRef.current?.postMessage({
         type: "state",
