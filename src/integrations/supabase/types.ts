@@ -14,7 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      karaoke_requests: {
+        Row: {
+          created_at: string
+          id: string
+          requester_name: string
+          song_channel: string
+          song_title: string
+          status: string
+          thumbnail_url: string
+          video_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          requester_name: string
+          song_channel?: string
+          song_title: string
+          status?: string
+          thumbnail_url?: string
+          video_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          requester_name?: string
+          song_channel?: string
+          song_title?: string
+          status?: string
+          thumbnail_url?: string
+          video_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
