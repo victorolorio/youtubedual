@@ -221,6 +221,8 @@ function PlayerScreen() {
       clearTimers();
       setEmbedError(null);
       endedSentRef.current = false;
+      stallRef.current = { lastTime: -1, ticks: 0, reloads: 0 };
+
 
       setDecks((prev) => {
         const copy: [DeckState, DeckState] = [prev[0], prev[1]];
