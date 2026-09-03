@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
-import { Check, ListMusic, Loader2, Music4, Plus, Search } from "lucide-react";
+import { Check, ListMusic, Loader2, Lock, Music4, Plus, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
+import { PIN_SESSION_STORAGE, useKaraokeSettings } from "@/lib/karaoke-settings";
 import { searchYouTube, type YouTubeSearchResult } from "@/lib/tv-channel";
 
 const NAME_STORAGE = "pedir_nombre";
