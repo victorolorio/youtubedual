@@ -610,7 +610,7 @@ function PlayerScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [applyCommand, clearTimers, sendActive, writeEvent]);
 
-  // Habilitar el canal de datos de cada deck al cambiar su vídeo
+  // Habilitar el canal de datos de cada deck al cambiar su vídeo o al recargarlo
   useEffect(() => {
     const timers: number[] = [];
     ([0, 1] as const).forEach((idx) => {
@@ -621,6 +621,11 @@ function PlayerScreen() {
             JSON.stringify({ event: "listening" }),
             "*",
           );
+          if (idx === activeDeckRef.current) {
+            sendDeck(idx, "playVideo");
+            sendDeck(idx, "unMute");
+            sendDeck(idx, "setVolume", [targetVolumeRef.current]);
+          }
         }, 1200),
       );
     });
@@ -636,7 +641,8 @@ function PlayerScreen() {
     );
     return () => timers.forEach((t) => window.clearTimeout(t));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [decks[0].videoId, decks[1].videoId]);
+  }, [decks[0].videoId, decks[1].videoId, reloadNonce[0], reloadNonce[1]]);
+
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const anyVideo = decks[0].videoId || decks[1].videoId;
