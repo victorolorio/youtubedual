@@ -414,6 +414,95 @@ function Dashboard() {
   const playTrackRef = useRef(playTrack);
   playTrackRef.current = playTrack;
 
+  /** Convierte un pedido en pista y lo manda a la cola (o al aire si no hay nada). */
+  const enqueueRequest = useCallback((req: KaraokeRequest) => {
+    const track: QueueTrack = {
+      id: `${req.video_id}-${Date.now()}`,
+      videoId: req.video_id,
+      title: req.song_title,
+      requester: req.requester_name,
+      requestId: req.id,
+    };
+    if (!currentRef.current) {
+      playTrackRef.current(track);
+    } else {
+      setQueue((q) => {
+        const next = [...q, track];
+        persistQueue(next);
+        return next;
+      });
+    }
+  }, []);
+
+  const approveRequest = useCallback(
+    async (req: KaraokeRequest) => {
+      enqueueRequest(req);
+      setRequests((list) => list.filter((r) => r.id !== req.id));
+      await supabase
+        .from("karaoke_requests")
+        .update({ status: "approved" })
+        .eq("id", req.id);
+      toast.success(`Aprobado: ${req.song_title}`);
+    },
+    [enqueueRequest],
+  );
+
+  const rejectRequest = useCallback(async (req: KaraokeRequest) => {
+    setRequests((list) => list.filter((r) => r.id !== req.id));
+    await supabase
+      .from("karaoke_requests")
+      .update({ status: "rejected" })
+      .eq("id", req.id);
+    toast(`Rechazado: ${req.song_title}`);
+  }, []);
+
+  // Carga inicial + tiempo real de los pedidos del público
+  useEffect(() => {
+    const savedJukebox = window.localStorage.getItem("dj_jukebox_mode");
+    if (savedJukebox != null) setJukeboxMode(savedJukebox === "1");
+
+    let cancelled = false;
+    void supabase
+      .from("karaoke_requests")
+      .select("*")
+      .eq("status", "pending")
+      .order("created_at", { ascending: true })
+      .then(({ data }) => {
+        if (cancelled) return;
+        setRequests((data ?? []) as KaraokeRequest[]);
+      });
+
+    const channel = supabase
+      .channel("pedidos-cabina")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "karaoke_requests" },
+        (payload) => {
+          const req = payload.new as KaraokeRequest;
+          if (jukeboxRef.current) {
+            enqueueRequest(req);
+            void supabase
+              .from("karaoke_requests")
+              .update({ status: "approved" })
+              .eq("id", req.id);
+            toast.success(`🎤 ${req.requester_name} pidió: ${req.song_title}`);
+          } else {
+            setRequests((list) =>
+              list.some((r) => r.id === req.id) ? list : [...list, req],
+            );
+            toast(`Nuevo pedido de ${req.requester_name}`);
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      void supabase.removeChannel(channel);
+    };
+  }, [enqueueRequest]);
+
+
   const addToQueue = async () => {
     const videoId = parseVideoId(urlInput);
     if (!videoId) {
