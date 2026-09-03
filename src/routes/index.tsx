@@ -763,6 +763,10 @@ function Dashboard() {
               <MonitorPlay className="size-5" />
               Abrir Pantalla TV
             </Button>
+            <Button size="lg" variant="outline" onClick={() => setQrOpen(true)}>
+              <QrCode className="size-5" />
+              Código QR Clientes
+            </Button>
             <Button
               size="icon"
               variant="outline"
