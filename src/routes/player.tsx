@@ -729,6 +729,18 @@ function PlayerScreen() {
         </div>
       )}
 
+      {settings?.requests_open && settings.daily_pin && (
+        <div className="pointer-events-none absolute bottom-6 left-6 z-20 rounded-xl border border-white/15 bg-black/55 px-4 py-2 backdrop-blur-md">
+          <p className="text-xs uppercase tracking-widest text-white/70 md:text-sm">
+            Pide tu tema escaneando el QR
+            <span className="mx-2 text-white/30">|</span>
+            PIN de hoy: <span className="font-bold text-white">{settings.daily_pin}</span>
+          </p>
+        </div>
+      )}
+
+
+
       <button
         type="button"
         onClick={toggleFullscreen}
