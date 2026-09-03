@@ -516,6 +516,16 @@ function PlayerScreen() {
         return stored === prev ? prev : stored;
       });
 
+      // Reafirma el handshake con la API de los iframes: sin él nunca llega
+      // 'infoDelivery' y la consola se queda con duración 0 (--:--).
+      ([0, 1] as const).forEach((idx) => {
+        if (!decksRef.current[idx].videoId) return;
+        deckRefs[idx].current?.contentWindow?.postMessage(
+          JSON.stringify({ event: "listening", id: idx, channel: "widget" }),
+          "*",
+        );
+      });
+
       const { duration, currentTime } = progressRef.current;
       const remaining = duration - currentTime;
       if (
