@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { useKaraokeSettings } from "@/lib/karaoke-settings";
 import {
   COMMAND_STORAGE,
   CROSSFADE_STORAGE,
