@@ -62,6 +62,25 @@ function RequestPage() {
   const [tab, setTab] = useState<"buscar" | "mis">("buscar");
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState<string | null>(null);
+  const { settings, loading: settingsLoading } = useKaraokeSettings();
+  const [pinDraft, setPinDraft] = useState("");
+  const [pinOk, setPinOk] = useState(false);
+  const [pinError, setPinError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPinOk(window.localStorage.getItem(PIN_SESSION_STORAGE) !== null);
+  }, []);
+
+  // Si el DJ cambia el PIN, la sesión guardada deja de valer.
+  useEffect(() => {
+    if (!settings) return;
+    const saved = window.localStorage.getItem(PIN_SESSION_STORAGE);
+    if (saved && saved !== settings.daily_pin) {
+      window.localStorage.removeItem(PIN_SESSION_STORAGE);
+      setPinOk(false);
+    }
+  }, [settings]);
+
 
   useEffect(() => {
     const saved = window.localStorage.getItem(NAME_STORAGE) ?? "";
