@@ -102,6 +102,7 @@ function PlayerScreen() {
   const [message, setMessage] = useState("");
   /** Nombre de quien pidió la canción actual (overlay de 8 s). */
   const [requester, setRequester] = useState<string | null>(null);
+  const { settings } = useKaraokeSettings();
   const requesterTimerRef = useRef<number | null>(null);
   const [needsAudioClick, setNeedsAudioClick] = useState(false);
   const [embedError, setEmbedError] = useState<string | null>(null);
