@@ -663,7 +663,7 @@ function PlayerScreen() {
           {([0, 1] as const).map((idx) =>
             decks[idx].videoId ? (
               <iframe
-                key={`deck-${idx}-${decks[idx].videoId}`}
+                key={`deck-${idx}-${decks[idx].videoId}-${reloadNonce[idx]}`}
                 ref={deckRefs[idx]}
                 src={embedUrl(decks[idx].videoId, origin)}
                 title={decks[idx].title || `Deck ${deckLabel(idx)}`}
