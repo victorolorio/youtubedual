@@ -366,14 +366,26 @@ function Dashboard() {
       setElapsed(0);
       console.log("[TV channel] emit play_video", track);
       // Sincronización dual: BroadcastChannel + comando persistente en localStorage
-      send({ type: "play_video", videoId: track.videoId, title: track.title });
+      send({
+        type: "play_video",
+        videoId: track.videoId,
+        title: track.title,
+        ...(track.requester ? { requester: track.requester } : {}),
+      });
       send({ type: "play" });
       sendStorageCommand({
         action: "PLAY",
         videoId: track.videoId,
         title: track.title,
+        ...(track.requester ? { requester: track.requester } : {}),
         timestamp: Date.now(),
       });
+      if (track.requestId) {
+        void supabase
+          .from("karaoke_requests")
+          .update({ status: "playing" })
+          .eq("id", track.requestId);
+      }
       ensureTvOpen();
       setStatus(`Reproduciendo «${track.title}».`);
     },
