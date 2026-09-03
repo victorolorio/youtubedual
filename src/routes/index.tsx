@@ -11,6 +11,7 @@ import {
   Pause,
   Play,
   Plus,
+  QrCode,
   RotateCcw,
   Search,
   Send,
