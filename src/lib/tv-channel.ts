@@ -12,7 +12,7 @@ export const CROSSFADE_STORAGE = "tv_crossfade_ms";
 export type DeckId = "A" | "B";
 
 export type TvCommand =
-  | { action: "PLAY"; videoId: string; title?: string; timestamp: number }
+  | { action: "PLAY"; videoId: string; title?: string; requester?: string; timestamp: number }
   | { action: "PAUSE"; timestamp: number }
   | { action: "RESTART"; timestamp: number }
   | { action: "SEEK_TO"; seconds: number; timestamp: number }
