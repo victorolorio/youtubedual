@@ -47,6 +47,27 @@ export type Database = {
         }
         Relationships: []
       }
+      karaoke_settings: {
+        Row: {
+          daily_pin: string
+          id: string
+          requests_open: boolean
+          updated_at: string
+        }
+        Insert: {
+          daily_pin?: string
+          id?: string
+          requests_open?: boolean
+          updated_at?: string
+        }
+        Update: {
+          daily_pin?: string
+          id?: string
+          requests_open?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
