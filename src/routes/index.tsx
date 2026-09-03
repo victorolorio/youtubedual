@@ -48,6 +48,11 @@ import {
   type YouTubeSearchResult,
 } from "@/lib/tv-channel";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  randomPin,
+  saveSettings,
+  useKaraokeSettings,
+} from "@/lib/karaoke-settings";
 import { QRCodeSVG } from "qrcode.react";
 
 type KaraokeRequest = {
