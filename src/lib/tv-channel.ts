@@ -38,10 +38,14 @@ export type QueueTrack = {
   id: string;
   videoId: string;
   title: string;
+  /** Nombre o mesa de quien pidió la canción desde el celular. */
+  requester?: string;
+  /** ID del pedido en la base de datos, si vino del público. */
+  requestId?: string;
 };
 
 export type TvMessage =
-  | { type: "play_video"; videoId: string; title: string }
+  | { type: "play_video"; videoId: string; title: string; requester?: string }
   | { type: "play" }
   | { type: "pause" }
   | { type: "restart" }
