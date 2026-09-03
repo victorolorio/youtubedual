@@ -46,6 +46,19 @@ import {
   type TvMessage,
   type YouTubeSearchResult,
 } from "@/lib/tv-channel";
+import { supabase } from "@/integrations/supabase/client";
+import { QRCodeSVG } from "qrcode.react";
+
+type KaraokeRequest = {
+  id: string;
+  requester_name: string;
+  video_id: string;
+  song_title: string;
+  song_channel: string;
+  thumbnail_url: string;
+  status: string;
+  created_at: string;
+};
 
 const API_KEY_STORAGE = "youtube_api_key";
 const AUTONEXT_STORAGE = "tv_auto_next";
