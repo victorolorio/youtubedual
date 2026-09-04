@@ -103,6 +103,7 @@ function PlayerScreen() {
   const [message, setMessage] = useState("");
   /** Nombre de quien pidió la canción actual (overlay de 8 s). */
   const [requester, setRequester] = useState<string | null>(null);
+  const [requesterType, setRequesterType] = useState<string>("karaoke");
   const { settings } = useKaraokeSettings();
   const requesterTimerRef = useRef<number | null>(null);
   const [needsAudioClick, setNeedsAudioClick] = useState(false);
@@ -264,6 +265,7 @@ function PlayerScreen() {
             if (requesterTimerRef.current) window.clearTimeout(requesterTimerRef.current);
             if (cmd.requester) {
               setRequester(cmd.requester);
+              setRequesterType(cmd.requestType ?? "karaoke");
               requesterTimerRef.current = window.setTimeout(
                 () => setRequester(null),
                 8000,
@@ -758,7 +760,9 @@ function PlayerScreen() {
         <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex justify-center px-6 pt-6 md:pt-10">
           <div className="tv-ticker rounded-2xl border border-primary/40 bg-black/70 px-8 py-4 backdrop-blur-md md:px-12 md:py-5">
             <p className="text-center text-2xl font-bold text-white drop-shadow-lg md:text-4xl">
-              🎵 Petición de: {requester}
+              {requesterType === "music_video"
+                ? `🎵 Sonando por petición de: ${requester}`
+                : `🎤 Turno de Karaoke: ${requester}`}
             </p>
           </div>
         </div>

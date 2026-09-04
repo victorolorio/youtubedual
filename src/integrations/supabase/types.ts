@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          request_type: string
           requester_name: string
           song_channel: string
           song_title: string
@@ -28,6 +29,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          request_type?: string
           requester_name: string
           song_channel?: string
           song_title: string
@@ -38,6 +40,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          request_type?: string
           requester_name?: string
           song_channel?: string
           song_title?: string
