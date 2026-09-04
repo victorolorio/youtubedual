@@ -63,37 +63,37 @@
 
 :root {
   --radius: 0.75rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.16 0.015 275);
-  --card: oklch(0.98 0.005 275);
-  --card-foreground: oklch(0.16 0.015 275);
-  --popover: oklch(0.98 0.005 275);
-  --popover-foreground: oklch(0.16 0.015 275);
+  --background: oklch(0.16 0.015 275);
+  --foreground: oklch(0.96 0.005 275);
+  --card: oklch(0.21 0.018 275);
+  --card-foreground: oklch(0.96 0.005 275);
+  --popover: oklch(0.21 0.018 275);
+  --popover-foreground: oklch(0.96 0.005 275);
   --primary: oklch(0.78 0.16 190);
   --primary-foreground: oklch(0.16 0.015 275);
-  --secondary: oklch(0.94 0.01 275);
-  --secondary-foreground: oklch(0.16 0.015 275);
-  --muted: oklch(0.95 0.008 275);
-  --muted-foreground: oklch(0.42 0.02 275);
+  --secondary: oklch(0.27 0.02 275);
+  --secondary-foreground: oklch(0.96 0.005 275);
+  --muted: oklch(0.25 0.018 275);
+  --muted-foreground: oklch(0.68 0.02 275);
   --accent: oklch(0.7 0.2 340);
   --accent-foreground: oklch(0.16 0.015 275);
   --destructive: oklch(0.62 0.22 22);
   --destructive-foreground: oklch(0.97 0.005 275);
-  --border: oklch(0.88 0.01 275);
-  --input: oklch(0.92 0.01 275);
+  --border: oklch(0.32 0.02 275);
+  --input: oklch(0.3 0.02 275);
   --ring: oklch(0.78 0.16 190);
   --chart-1: oklch(0.78 0.16 190);
   --chart-2: oklch(0.7 0.2 340);
   --chart-3: oklch(0.8 0.17 90);
   --chart-4: oklch(0.65 0.19 275);
   --chart-5: oklch(0.72 0.18 145);
-  --sidebar: oklch(0.97 0.005 275);
-  --sidebar-foreground: oklch(0.16 0.015 275);
+  --sidebar: oklch(0.19 0.018 275);
+  --sidebar-foreground: oklch(0.96 0.005 275);
   --sidebar-primary: oklch(0.78 0.16 190);
   --sidebar-primary-foreground: oklch(0.16 0.015 275);
-  --sidebar-accent: oklch(0.94 0.01 275);
-  --sidebar-accent-foreground: oklch(0.16 0.015 275);
-  --sidebar-border: oklch(0.88 0.01 275);
+  --sidebar-accent: oklch(0.27 0.02 275);
+  --sidebar-accent-foreground: oklch(0.96 0.005 275);
+  --sidebar-border: oklch(0.32 0.02 275);
   --sidebar-ring: oklch(0.78 0.16 190);
 }
 
@@ -102,7 +102,7 @@
 }
 
 @utility panel-surface {
-  background-image: linear-gradient(160deg, oklch(0.98 0.005 275), oklch(0.96 0.008 275));
+  background-image: linear-gradient(160deg, oklch(0.23 0.02 275), oklch(0.18 0.016 275));
   border: 1px solid var(--color-border);
 }
 
