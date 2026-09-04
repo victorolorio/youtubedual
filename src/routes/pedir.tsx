@@ -6,10 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { PIN_SESSION_STORAGE, useKaraokeSettings } from "@/lib/karaoke-settings";
-import { searchYouTube, type YouTubeSearchResult } from "@/lib/tv-channel";
+import {
+  searchYouTube,
+  type RequestType,
+  type YouTubeSearchResult,
+} from "@/lib/tv-channel";
 
 const NAME_STORAGE = "pedir_nombre";
 const KEY_STORAGE = "youtube_api_key";
+const TYPE_STORAGE = "pedir_tipo";
 
 export const Route = createFileRoute("/pedir")({
   head: () => ({
@@ -40,6 +45,7 @@ type RequestRow = {
   song_channel: string;
   thumbnail_url: string;
   status: string;
+  request_type?: string;
   created_at: string;
 };
 
@@ -61,6 +67,7 @@ function RequestPage() {
   const [mine, setMine] = useState<RequestRow[]>([]);
   const [tab, setTab] = useState<"buscar" | "mis">("buscar");
   const [sent, setSent] = useState(false);
+  const [requestType, setRequestType] = useState<RequestType>("karaoke");
   const [sending, setSending] = useState<string | null>(null);
   const { settings, loading: settingsLoading } = useKaraokeSettings();
   const [pinDraft, setPinDraft] = useState("");
@@ -89,6 +96,8 @@ function RequestPage() {
     const fromUrl = url.searchParams.get("k");
     if (fromUrl) window.localStorage.setItem(KEY_STORAGE, fromUrl);
     setApiKey(fromUrl ?? window.localStorage.getItem(KEY_STORAGE) ?? "");
+    const savedType = window.localStorage.getItem(TYPE_STORAGE);
+    if (savedType === "music_video" || savedType === "karaoke") setRequestType(savedType);
   }, []);
 
   const loadMine = useCallback(async (who: string) => {
@@ -120,14 +129,23 @@ function RequestPage() {
 
   const pendingCount = mine.filter((r) => r.status === "pending").length;
 
-  const runSearch = async (withKaraoke: boolean) => {
+  const buildQuery = (raw: string) => {
+    if (requestType === "karaoke") {
+      return /karaoke/i.test(raw) ? raw : `${raw} karaoke`;
+    }
+    return /(video oficial|official video|videoclip)/i.test(raw)
+      ? raw
+      : `${raw} video oficial`;
+  };
+
+  const runSearch = async () => {
     const raw = query.trim();
     if (!raw) return;
     if (!apiKey) {
       setError("Pide al DJ que comparta el código QR actualizado para habilitar la búsqueda.");
       return;
     }
-    const q = withKaraoke && !/karaoke/i.test(raw) ? `${raw} karaoke` : raw;
+    const q = buildQuery(raw);
     setSearching(true);
     setError(null);
     try {
@@ -152,6 +170,7 @@ function RequestPage() {
       song_channel: r.channel,
       thumbnail_url: r.thumbnail,
       status: "pending",
+      request_type: requestType,
     });
     setSending(null);
     if (insertError) {
@@ -271,11 +290,36 @@ function RequestPage() {
 
       {tab === "buscar" ? (
         <section className="space-y-4 px-4 py-4">
+          <div className="grid grid-cols-2 gap-2 rounded-2xl border border-border bg-card p-1">
+            {(
+              [
+                { key: "karaoke", label: "🎤 Karaoke", hint: "Modo cantar" },
+                { key: "music_video", label: "🎬 Video Musical", hint: "Modo fiesta" },
+              ] as Array<{ key: RequestType; label: string; hint: string }>
+            ).map((opt) => (
+              <button
+                key={opt.key}
+                type="button"
+                onClick={() => {
+                  setRequestType(opt.key);
+                  window.localStorage.setItem(TYPE_STORAGE, opt.key);
+                }}
+                className={`rounded-xl px-3 py-2 text-sm font-semibold transition ${
+                  requestType === opt.key
+                    ? "bg-primary text-primary-foreground shadow-glow"
+                    : "text-muted-foreground"
+                }`}
+              >
+                {opt.label}
+                <span className="block text-[10px] font-normal opacity-80">{opt.hint}</span>
+              </button>
+            ))}
+          </div>
           <form
             className="flex gap-2"
             onSubmit={(e) => {
               e.preventDefault();
-              void runSearch(true);
+              void runSearch();
             }}
           >
             <Input
@@ -289,9 +333,6 @@ function RequestPage() {
               {searching ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
             </Button>
           </form>
-          <Button variant="outline" size="sm" onClick={() => void runSearch(true)}>
-            + Karaoke
-          </Button>
 
           {error && <p className="text-sm text-destructive">{error}</p>}
 
@@ -341,9 +382,20 @@ function RequestPage() {
               />
               <div className="min-w-0 flex-1">
                 <p className="line-clamp-2 text-sm font-medium">{r.song_title}</p>
-                <span className="mt-1 inline-block rounded-full bg-secondary px-3 py-1 text-xs text-secondary-foreground">
-                  {STATUS_LABEL[r.status] ?? r.status}
-                </span>
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <span className="inline-block rounded-full bg-secondary px-3 py-1 text-xs text-secondary-foreground">
+                    {STATUS_LABEL[r.status] ?? r.status}
+                  </span>
+                  <span
+                    className={`inline-block rounded-full px-3 py-1 text-[10px] font-bold uppercase ${
+                      r.request_type === "music_video"
+                        ? "bg-cyan-500/20 text-cyan-300"
+                        : "bg-violet-500/20 text-violet-300"
+                    }`}
+                  >
+                    {r.request_type === "music_video" ? "🎬 Video" : "🎤 Karaoke"}
+                  </span>
+                </div>
               </div>
             </div>
           ))}
@@ -354,7 +406,11 @@ function RequestPage() {
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-background/80 backdrop-blur">
           <div className="tv-ticker flex flex-col items-center gap-3 rounded-3xl border border-primary/40 bg-card px-10 py-8 text-center shadow-glow">
             <Check className="size-12 text-primary" />
-            <p className="text-xl font-bold">¡Pedido recibido en cabina!</p>
+            <p className="text-xl font-bold">
+              {requestType === "karaoke"
+                ? "🎤 ¡Petición de Karaoke enviada! Prepárate para cantar cuando te llamen."
+                : "🎬 ¡Video Musical enviado a la lista de reproducción!"}
+            </p>
           </div>
         </div>
       )}
