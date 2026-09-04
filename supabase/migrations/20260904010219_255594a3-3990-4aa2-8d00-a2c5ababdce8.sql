@@ -1,0 +1,1 @@
+ALTER TABLE public.karaoke_requests ADD COLUMN IF NOT EXISTS request_type text NOT NULL DEFAULT 'karaoke';
