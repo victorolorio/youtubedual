@@ -11,8 +11,18 @@ export const CROSSFADE_STORAGE = "tv_crossfade_ms";
 
 export type DeckId = "A" | "B";
 
+/** Tipo de pedido del público: karaoke (para cantar) o videoclip musical. */
+export type RequestType = "karaoke" | "music_video";
+
 export type TvCommand =
-  | { action: "PLAY"; videoId: string; title?: string; requester?: string; timestamp: number }
+  | {
+      action: "PLAY";
+      videoId: string;
+      title?: string;
+      requester?: string;
+      requestType?: RequestType;
+      timestamp: number;
+    }
   | { action: "PAUSE"; timestamp: number }
   | { action: "RESTART"; timestamp: number }
   | { action: "SEEK_TO"; seconds: number; timestamp: number }
@@ -42,10 +52,18 @@ export type QueueTrack = {
   requester?: string;
   /** ID del pedido en la base de datos, si vino del público. */
   requestId?: string;
+  /** Karaoke o video musical. */
+  requestType?: RequestType;
 };
 
 export type TvMessage =
-  | { type: "play_video"; videoId: string; title: string; requester?: string }
+  | {
+      type: "play_video";
+      videoId: string;
+      title: string;
+      requester?: string;
+      requestType?: RequestType;
+    }
   | { type: "play" }
   | { type: "pause" }
   | { type: "restart" }
