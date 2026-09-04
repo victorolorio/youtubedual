@@ -69,7 +69,7 @@ type KaraokeRequest = {
 
 
 /** Píldora de color según el tipo de pedido. */
-function TypeBadge({ type }: { type?: string }) {
+function TypeBadge({ type }: { type?: string | undefined }) {
   const isVideo = type === "music_video";
   return (
     <span
