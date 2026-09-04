@@ -63,8 +63,26 @@ type KaraokeRequest = {
   song_channel: string;
   thumbnail_url: string;
   status: string;
+  request_type?: string;
   created_at: string;
 };
+
+
+/** Píldora de color según el tipo de pedido. */
+function TypeBadge({ type }: { type?: string }) {
+  const isVideo = type === "music_video";
+  return (
+    <span
+      className={`inline-block shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+        isVideo
+          ? "bg-cyan-500/20 text-cyan-300 ring-1 ring-cyan-400/40"
+          : "bg-violet-500/20 text-violet-300 ring-1 ring-violet-400/40"
+      }`}
+    >
+      {isVideo ? "🎬 Video Musical" : "🎤 Karaoke"}
+    </span>
+  );
+}
 
 const API_KEY_STORAGE = "youtube_api_key";
 const AUTONEXT_STORAGE = "tv_auto_next";
@@ -410,6 +428,7 @@ function Dashboard() {
         videoId: track.videoId,
         title: track.title,
         ...(track.requester ? { requester: track.requester } : {}),
+        ...(track.requestType ? { requestType: track.requestType } : {}),
       });
       send({ type: "play" });
       sendStorageCommand({
@@ -417,6 +436,7 @@ function Dashboard() {
         videoId: track.videoId,
         title: track.title,
         ...(track.requester ? { requester: track.requester } : {}),
+        ...(track.requestType ? { requestType: track.requestType } : {}),
         timestamp: Date.now(),
       });
       if (track.requestId) {
@@ -442,6 +462,7 @@ function Dashboard() {
       title: req.song_title,
       requester: req.requester_name,
       requestId: req.id,
+      requestType: req.request_type === "music_video" ? "music_video" : "karaoke",
     };
     if (!currentRef.current) {
       playTrackRef.current(track);
@@ -1236,9 +1257,12 @@ function Dashboard() {
                   />
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-semibold text-primary">
-                    {req.requester_name}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="truncate text-xs font-semibold text-primary">
+                      {req.requester_name}
+                    </p>
+                    <TypeBadge type={req.request_type} />
+                  </div>
                   <p className="line-clamp-2 text-sm">{req.song_title}</p>
                   <div className="mt-2 flex gap-2">
                     <Button size="sm" onClick={() => void approveRequest(req)}>
@@ -1297,6 +1321,9 @@ function Dashboard() {
                   {index + 1}
                 </span>
                 <span className="min-w-0 flex-1 truncate text-sm">
+                  {track.requestType && (
+                    <TypeBadge type={track.requestType} />
+                  )}{" "}
                   {track.title}
                   {blockedIds.includes(track.videoId) && (
                     <span className="ml-2 rounded-full border border-destructive/50 bg-destructive/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-destructive">
