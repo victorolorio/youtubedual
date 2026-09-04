@@ -785,45 +785,44 @@ function Dashboard() {
   const remove = (id: string) => setQueue((q) => q.filter((t) => t.id !== id));
 
   return (
-    <main className="min-h-screen bg-background px-4 py-8 text-foreground md:px-8">
-      <div className="mx-auto max-w-6xl space-y-6">
-        <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary">
-              Dual Screen
-            </p>
-            <h1 className="mt-1 text-3xl font-bold tracking-tight md:text-4xl">
-              Consola DJ / Karaoke
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Controla la pantalla de TV en tiempo real sin backend.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button size="lg" onClick={openTv} className="shadow-glow">
-              <MonitorPlay className="size-5" />
-              Abrir Pantalla TV
-            </Button>
-            <Button size="lg" variant="outline" onClick={() => setQrOpen(true)}>
-              <QrCode className="size-5" />
-              Código QR Clientes
-            </Button>
-            <Button
-              size="icon"
-              variant="outline"
-              aria-label="Ajustes"
-              onClick={() => {
-                setKeyDraft(apiKey);
-                setSettingsOpen(true);
-              }}
-            >
-              <Settings className="size-5" />
-            </Button>
-          </div>
-        </header>
+    <main className="flex min-h-screen flex-col gap-4 bg-background p-4 text-foreground md:h-screen md:overflow-hidden">
+      <header className="flex shrink-0 flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary">
+            Dual Screen
+          </p>
+          <h1 className="mt-1 text-3xl font-bold tracking-tight md:text-4xl">
+            Consola DJ / Karaoke
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Controla la pantalla de TV en tiempo real sin backend.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button size="lg" onClick={openTv} className="shadow-glow">
+            <MonitorPlay className="size-5" />
+            Abrir Pantalla TV
+          </Button>
+          <Button size="lg" variant="outline" onClick={() => setQrOpen(true)}>
+            <QrCode className="size-5" />
+            Código QR Clientes
+          </Button>
+          <Button
+            size="icon"
+            variant="outline"
+            aria-label="Ajustes"
+            onClick={() => {
+              setKeyDraft(apiKey);
+              setSettingsOpen(true);
+            }}
+          >
+            <Settings className="size-5" />
+          </Button>
+        </div>
+      </header>
 
-        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-        <div className="min-w-0 space-y-6">
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+        <div className="flex min-h-0 flex-col gap-4 overflow-y-auto pr-1 scrollbar-thin">
 
 
         <section className="panel-surface rounded-2xl p-5">
