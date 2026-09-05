@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
-import { Check, ListMusic, Loader2, Lock, Music4, Plus, Search } from "lucide-react";
+import { Check, ListMusic, Loader2, Lock, Music4, Plus, Search, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
