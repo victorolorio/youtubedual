@@ -129,6 +129,24 @@ function RequestPage() {
 
   const pendingCount = mine.filter((r) => r.status === "pending").length;
 
+  const cancelRequest = async (id: string) => {
+    if (!window.confirm("¿Deseas cancelar esta petición?")) return;
+    setCancelling(id);
+    const { error: delError } = await supabase
+      .from("karaoke_requests")
+      .delete()
+      .eq("id", id)
+      .eq("status", "pending");
+    setCancelling(null);
+    if (delError) {
+      setError("No se pudo cancelar el pedido. Intenta otra vez.");
+      return;
+    }
+    setError(null);
+    setMine((prev) => prev.filter((r) => r.id !== id));
+  };
+
+
   const buildQuery = (raw: string) => {
     if (requestType === "karaoke") {
       return /karaoke/i.test(raw) ? raw : `${raw} karaoke`;
