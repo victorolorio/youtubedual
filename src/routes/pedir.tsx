@@ -107,6 +107,12 @@ function RequestPage() {
     setApiKey(fromUrl ?? window.localStorage.getItem(KEY_STORAGE) ?? "");
     const savedType = window.localStorage.getItem(TYPE_STORAGE);
     if (savedType === "music_video" || savedType === "karaoke") setRequestType(savedType);
+    try {
+      const savedHidden = JSON.parse(window.localStorage.getItem(HIDDEN_STORAGE) ?? "[]");
+      if (Array.isArray(savedHidden)) setHiddenIds(savedHidden as string[]);
+    } catch {
+      /* historial local corrupto: se ignora */
+    }
   }, []);
 
   const loadMine = useCallback(async (who: string) => {
