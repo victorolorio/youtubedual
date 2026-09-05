@@ -527,7 +527,7 @@ function PlayerScreen() {
   }, [writeEvent]);
 
   return (
-    <div className="fixed inset-0 m-0 h-screen max-h-full w-screen max-w-full overflow-hidden bg-black p-0">
+    <div className="fixed inset-0 m-0 flex h-screen w-screen items-center justify-center overflow-hidden bg-black p-0">
       <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
         <div
           className="relative overflow-hidden"
@@ -540,17 +540,15 @@ function PlayerScreen() {
         >
           <div
             ref={hostRef}
-            className="pointer-events-none absolute inset-0 h-full w-full"
+            className="pointer-events-none absolute inset-0 h-full w-full border-none bg-black opacity-100"
           />
         </div>
       </div>
 
-      {/* Velo de carga: se oculta en cuanto el video empieza a sonar. */}
-      <div
-        className={`pointer-events-none absolute inset-0 z-10 bg-black transition-opacity duration-500 ${
-          hasVideo && loading ? "opacity-100" : "opacity-0"
-        }`}
-      />
+      {/* Velo de carga: solo existe mientras el video arranca. */}
+      {hasVideo && loading && (
+        <div className="pointer-events-none absolute inset-0 z-10 bg-black" />
+      )}
 
       {needsAudioClick && (
         <button
@@ -582,7 +580,7 @@ function PlayerScreen() {
         type="button"
         onClick={toggleFullscreen}
         aria-label="Pantalla completa"
-        className={`absolute bottom-6 right-6 z-30 rounded-full border border-white/20 bg-black/50 px-4 py-2 text-xs uppercase tracking-widest text-white/70 backdrop-blur-md transition-opacity duration-500 hover:text-white ${
+        className={`absolute bottom-6 right-6 z-30 rounded-full border border-white/20 bg-black/50 px-4 py-2 text-xs uppercase tracking-widest text-white/70 transition-opacity duration-500 hover:text-white ${
           controlsVisible ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
       >
@@ -591,7 +589,7 @@ function PlayerScreen() {
 
       {requester && (
         <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex justify-center px-6 pt-6 md:pt-10">
-          <div className="tv-ticker rounded-2xl border border-primary/40 bg-black/70 px-8 py-4 backdrop-blur-md md:px-12 md:py-5">
+          <div className="tv-ticker rounded-2xl border border-primary/40 bg-black/70 px-8 py-4 md:px-12 md:py-5">
             <p className="text-center text-2xl font-bold text-white drop-shadow-lg md:text-4xl">
               {`🎵 Petición de: ${requester}`}
             </p>
@@ -602,7 +600,7 @@ function PlayerScreen() {
 
       {message && (
         <div className="pointer-events-none absolute inset-x-0 bottom-24 z-20 flex justify-center px-6">
-          <p className="rounded-full bg-black/75 px-8 py-4 text-3xl font-bold text-white drop-shadow-lg backdrop-blur-md md:text-5xl">
+          <p className="rounded-full bg-black/75 px-8 py-4 text-3xl font-bold text-white drop-shadow-lg md:text-5xl">
             {message}
           </p>
         </div>
