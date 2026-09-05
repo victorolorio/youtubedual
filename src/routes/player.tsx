@@ -4,12 +4,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useKaraokeSettings } from "@/lib/karaoke-settings";
 import {
   COMMAND_STORAGE,
-  CROSSFADE_STORAGE,
   EVENT_STORAGE,
   MESSAGE_STORAGE,
   VOLUME_STORAGE,
   createTvChannel,
-  type DeckId,
   type TvCommand,
   type TvEvent,
   type TvMessage,
@@ -22,7 +20,7 @@ export const Route = createFileRoute("/player")({
       {
         name: "description",
         content:
-          "Salida limpia a pantalla completa para TV: reproduce la cola de karaoke con transiciones crossfade entre dos decks.",
+          "Salida limpia a pantalla completa para TV: reproduce la cola de karaoke con un reproductor persistente sin cortes.",
       },
       { property: "og:title", content: "Pantalla TV — Salida de Video Karaoke" },
       {
@@ -36,16 +34,33 @@ export const Route = createFileRoute("/player")({
   component: PlayerScreen,
 });
 
-const IFRAME_ALLOW =
-  "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
-
 /** Segundos restantes a partir de los cuales se recorta el silencio final. */
 const TAIL_TRIM_SECONDS = 3;
-/** Espera antes de arrancar el crossfade, para que el deck entrante bufferice. */
-const PRELOAD_DELAY = 900;
-const DEFAULT_CROSSFADE = 2000;
 
-type DeckState = { videoId: string; title: string };
+type YtPlayer = {
+  loadVideoById: (opts: { videoId: string; startSeconds?: number }) => void;
+  playVideo: () => void;
+  pauseVideo: () => void;
+  stopVideo: () => void;
+  seekTo: (seconds: number, allowSeekAhead: boolean) => void;
+  setVolume: (v: number) => void;
+  unMute: () => void;
+  mute: () => void;
+  getDuration: () => number;
+  getCurrentTime: () => number;
+  getPlayerState: () => number;
+  destroy: () => void;
+};
+
+declare global {
+  interface Window {
+    YT?: {
+      Player: new (el: HTMLElement | string, opts: Record<string, unknown>) => YtPlayer;
+      PlayerState: Record<string, number>;
+    };
+    onYouTubeIframeAPIReady?: () => void;
+  }
+}
 
 function readCommand(): TvCommand | null {
   try {
@@ -56,7 +71,6 @@ function readCommand(): TvCommand | null {
   }
 }
 
-/** Lee el mensaje en pantalla guardado por la consola. */
 function readStoredMessage(): string {
   try {
     const raw = window.localStorage.getItem(MESSAGE_STORAGE);
@@ -68,58 +82,56 @@ function readStoredMessage(): string {
   }
 }
 
-function readCrossfade(): number {
-  const raw = window.localStorage.getItem(CROSSFADE_STORAGE);
-  const n = Number(raw);
-  return Number.isFinite(n) && n >= 0 ? n : DEFAULT_CROSSFADE;
-}
-
-function embedUrl(videoId: string, origin: string) {
-  return `https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1&origin=${encodeURIComponent(
-    origin,
-  )}&rel=0&modestbranding=1&playsinline=1&controls=0&iv_load_policy=3&fs=0&disablekb=1&showinfo=0&cc_load_policy=0&color=white`;
+/** Carga (una sola vez) la API de iframes de YouTube. */
+function loadYouTubeApi(): Promise<void> {
+  if (typeof window === "undefined") return Promise.resolve();
+  if (window.YT?.Player) return Promise.resolve();
+  return new Promise((resolve) => {
+    const prev = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => {
+      prev?.();
+      resolve();
+    };
+    if (!document.getElementById("youtube-iframe-api")) {
+      const tag = document.createElement("script");
+      tag.id = "youtube-iframe-api";
+      tag.src = "https://www.youtube.com/iframe_api";
+      document.head.appendChild(tag);
+    }
+    const poll = window.setInterval(() => {
+      if (window.YT?.Player) {
+        window.clearInterval(poll);
+        resolve();
+      }
+    }, 200);
+  });
 }
 
 function PlayerScreen() {
-  const deckRefs = [
-    useRef<HTMLIFrameElement>(null),
-    useRef<HTMLIFrameElement>(null),
-  ] as const;
+  const hostRef = useRef<HTMLDivElement>(null);
+  const playerRef = useRef<YtPlayer | null>(null);
+  const readyRef = useRef(false);
   const channelRef = useRef<BroadcastChannel | null>(null);
   const lastCommandTsRef = useRef(0);
-  const progressRef = useRef({ duration: 0, currentTime: 0, playing: false });
-  const endedSentRef = useRef(false);
   const targetVolumeRef = useRef(80);
-  const crossfadeRef = useRef(DEFAULT_CROSSFADE);
-  const fadeTimerRef = useRef<number | null>(null);
-  const preloadTimerRef = useRef<number | null>(null);
+  const currentRef = useRef<{ videoId: string; title: string }>({
+    videoId: "",
+    title: "",
+  });
+  const pendingRef = useRef<{ videoId: string; title: string } | null>(null);
+  const endedSentRef = useRef(false);
+  const bufferingSinceRef = useRef(0);
+  const progressRef = useRef({ duration: 0, currentTime: 0, playing: false });
 
-  const [decks, setDecks] = useState<[DeckState, DeckState]>([
-    { videoId: "", title: "" },
-    { videoId: "", title: "" },
-  ]);
-  const [activeDeck, setActiveDeck] = useState<0 | 1>(0);
-  const [opacities, setOpacities] = useState<[number, number]>([1, 0]);
+  const [hasVideo, setHasVideo] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
-  /** Nombre de quien pidió la canción actual (overlay de 8 s). */
   const [requester, setRequester] = useState<string | null>(null);
   const [requesterType, setRequesterType] = useState<string>("karaoke");
+  const [needsAudioClick, setNeedsAudioClick] = useState(false);
+  const [controlsVisible, setControlsVisible] = useState(true);
   const { settings } = useKaraokeSettings();
   const requesterTimerRef = useRef<number | null>(null);
-  const [needsAudioClick, setNeedsAudioClick] = useState(false);
-  const [embedError, setEmbedError] = useState<string | null>(null);
-  const [controlsVisible, setControlsVisible] = useState(true);
-  /** Nonce por deck: cambiarlo remonta el iframe (recarga forzada). */
-  const [reloadNonce, setReloadNonce] = useState<[number, number]>([0, 0]);
-  /** Vigilancia de atascos: cuenta ticks sin avance de tiempo. */
-  const stallRef = useRef({ lastTime: -1, ticks: 0, reloads: 0 });
-
-  const decksRef = useRef(decks);
-  const activeDeckRef = useRef<0 | 1>(0);
-  decksRef.current = decks;
-  activeDeckRef.current = activeDeck;
-
-  const deckLabel = useCallback((idx: 0 | 1): DeckId => (idx === 0 ? "A" : "B"), []);
 
   /** Escribe un evento para la consola (funciona entre ventanas vía localStorage). */
   const writeEvent = useCallback(
@@ -132,7 +144,7 @@ function PlayerScreen() {
           EVENT_STORAGE,
           JSON.stringify({
             kind,
-            deck: activeDeckRef.current === 0 ? "A" : "B",
+            deck: "A",
             duration: progressRef.current.duration,
             currentTime: progressRef.current.currentTime,
             playing: progressRef.current.playing,
@@ -147,132 +159,39 @@ function PlayerScreen() {
     [],
   );
 
-  /** Enviar un comando a la API del iframe de un deck concreto. */
-  const sendDeck = useCallback(
-    (idx: 0 | 1, func: string, args: unknown[] = []) => {
-      const win = deckRefs[idx].current?.contentWindow;
-      if (!win) return;
-      win.postMessage(JSON.stringify({ event: "command", func, args }), "*");
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
-  );
-
-  /** Comando dirigido al deck que está al aire. */
-  const sendActive = useCallback(
-    (func: string, args: unknown[] = []) => sendDeck(activeDeckRef.current, func, args),
-    [sendDeck],
-  );
-
-  const clearTimers = useCallback(() => {
-    if (fadeTimerRef.current) window.clearInterval(fadeTimerRef.current);
-    if (preloadTimerRef.current) window.clearTimeout(preloadTimerRef.current);
-    fadeTimerRef.current = null;
-    preloadTimerRef.current = null;
+  /** Reproduce una pista nueva sobre la instancia existente. */
+  const playTrack = useCallback((videoId: string, title: string) => {
+    currentRef.current = { videoId, title };
+    endedSentRef.current = false;
+    bufferingSinceRef.current = 0;
+    progressRef.current = { duration: 0, currentTime: 0, playing: false };
+    setHasVideo(true);
+    setLoading(true);
+    const player = playerRef.current;
+    if (!player || !readyRef.current) {
+      pendingRef.current = { videoId, title };
+      return;
+    }
+    try {
+      player.loadVideoById({ videoId, startSeconds: 0 });
+      player.setVolume(targetVolumeRef.current);
+      player.unMute();
+      player.playVideo();
+    } catch {
+      pendingRef.current = { videoId, title };
+    }
   }, []);
-
-  /** Ejecuta el crossfade de vídeo + audio del deck saliente al entrante. */
-  const runCrossfade = useCallback(
-    (incoming: 0 | 1) => {
-      const outgoing = (incoming === 0 ? 1 : 0) as 0 | 1;
-      const target = targetVolumeRef.current;
-      const duration = crossfadeRef.current;
-
-      if (fadeTimerRef.current) window.clearInterval(fadeTimerRef.current);
-
-      const finish = () => {
-        setOpacities(incoming === 0 ? [1, 0] : [0, 1]);
-        setActiveDeck(incoming);
-        activeDeckRef.current = incoming;
-        sendDeck(incoming, "setVolume", [target]);
-        sendDeck(incoming, "unMute");
-        sendDeck(outgoing, "setVolume", [0]);
-        sendDeck(outgoing, "pauseVideo");
-        progressRef.current = { duration: 0, currentTime: 0, playing: true };
-        endedSentRef.current = false;
-      };
-
-      if (duration <= 0) {
-        finish();
-        return;
-      }
-
-      const step = 60;
-      const started = Date.now();
-      fadeTimerRef.current = window.setInterval(() => {
-        const t = Math.min(1, (Date.now() - started) / duration);
-        const inOpacity = t;
-        const outOpacity = 1 - t;
-        setOpacities(
-          incoming === 0
-            ? [inOpacity, outOpacity]
-            : [outOpacity, inOpacity],
-        );
-        sendDeck(incoming, "setVolume", [Math.round(target * t)]);
-        sendDeck(outgoing, "setVolume", [Math.round(target * (1 - t))]);
-        if (t >= 1) {
-          if (fadeTimerRef.current) window.clearInterval(fadeTimerRef.current);
-          fadeTimerRef.current = null;
-          finish();
-        }
-      }, step);
-    },
-    [sendDeck],
-  );
-
-  /** Carga una pista en el deck inactivo y hace la transición. */
-  const loadIntoIdleDeck = useCallback(
-    (videoId: string, title: string) => {
-      const incoming = (activeDeckRef.current === 0 ? 1 : 0) as 0 | 1;
-      clearTimers();
-      setEmbedError(null);
-      endedSentRef.current = false;
-      stallRef.current = { lastTime: -1, ticks: 0, reloads: 0 };
-      // Nueva pista: el tiempo y la duración vuelven a cero hasta que el
-      // reproductor confirme los datos reales.
-      progressRef.current = { duration: 0, currentTime: 0, playing: false };
-      writeEvent("heartbeat");
-      channelRef.current?.postMessage({
-        type: "state",
-        duration: 0,
-        currentTime: 0,
-        playing: false,
-        deck: activeDeckRef.current === 0 ? "A" : "B",
-      } satisfies TvMessage);
-
-
-      setDecks((prev) => {
-        const copy: [DeckState, DeckState] = [prev[0], prev[1]];
-        copy[incoming] = { videoId, title };
-        decksRef.current = copy;
-        return copy;
-      });
-
-      // El deck entrante empieza mudo e invisible; se revela con el crossfade.
-      preloadTimerRef.current = window.setTimeout(() => {
-        sendDeck(incoming, "setVolume", [0]);
-        sendDeck(incoming, "playVideo");
-        deckRefs[incoming].current?.contentWindow?.postMessage(
-          JSON.stringify({ event: "listening" }),
-          "*",
-        );
-        runCrossfade(incoming);
-      }, crossfadeRef.current > 0 ? PRELOAD_DELAY : 200);
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [clearTimers, runCrossfade, sendDeck],
-  );
 
   const applyCommand = useCallback(
     (cmd: TvCommand) => {
       if (cmd.timestamp <= lastCommandTsRef.current) return;
       lastCommandTsRef.current = cmd.timestamp;
+      const player = playerRef.current;
 
       switch (cmd.action) {
         case "PLAY": {
-          const activeVideo = decksRef.current[activeDeckRef.current].videoId;
-          if (cmd.videoId && cmd.videoId !== activeVideo) {
-            loadIntoIdleDeck(cmd.videoId, cmd.title ?? "");
+          if (cmd.videoId && cmd.videoId !== currentRef.current.videoId) {
+            playTrack(cmd.videoId, cmd.title ?? "");
             if (requesterTimerRef.current) window.clearTimeout(requesterTimerRef.current);
             if (cmd.requester) {
               setRequester(cmd.requester);
@@ -285,48 +204,140 @@ function PlayerScreen() {
               setRequester(null);
             }
           } else {
-            sendActive("playVideo");
+            player?.playVideo();
           }
           break;
         }
         case "PAUSE":
-          sendActive("pauseVideo");
+          player?.pauseVideo();
           break;
         case "RESTART":
-          sendActive("seekTo", [0, true]);
-          sendActive("playVideo");
+          player?.seekTo(0, true);
+          player?.playVideo();
           break;
         case "SEEK_TO":
-          sendActive("seekTo", [Math.max(0, cmd.seconds), true]);
-          sendActive("playVideo");
+          player?.seekTo(Math.max(0, cmd.seconds), true);
+          player?.playVideo();
           break;
         case "MESSAGE":
           setMessage(cmd.text);
           break;
-        case "CLEAR": {
-          clearTimers();
-          sendDeck(0, "pauseVideo");
-          sendDeck(1, "pauseVideo");
-          const empty: [DeckState, DeckState] = [
-            { videoId: "", title: "" },
-            { videoId: "", title: "" },
-          ];
-          decksRef.current = empty;
-          setDecks(empty);
-          setOpacities([1, 0]);
-          setActiveDeck(0);
-          activeDeckRef.current = 0;
+        case "CLEAR":
+          currentRef.current = { videoId: "", title: "" };
+          pendingRef.current = null;
+          progressRef.current = { duration: 0, currentTime: 0, playing: false };
+          try {
+            player?.stopVideo();
+          } catch {
+            /* aún sin reproductor */
+          }
+          setHasVideo(false);
+          setLoading(false);
           break;
-        }
       }
     },
-    [clearTimers, loadIntoIdleDeck, sendActive, sendDeck],
+    [playTrack],
   );
 
+  const applyCommandRef = useRef(applyCommand);
+  applyCommandRef.current = applyCommand;
+
+  /** Falla la pista actual: avisa al panel y libera la pantalla al instante. */
+  const failCurrent = useCallback(
+    (code: number) => {
+      const { videoId, title } = currentRef.current;
+      if (endedSentRef.current) return;
+      endedSentRef.current = true;
+      setLoading(false);
+      writeEvent("embed_error", { code, title: title || videoId, videoId });
+      channelRef.current?.postMessage({
+        type: "embed_error",
+        videoId,
+        title: title || videoId,
+        code,
+      } satisfies TvMessage);
+    },
+    [writeEvent],
+  );
+
+  // --- Montaje único del reproductor persistente ---
+  useEffect(() => {
+    let cancelled = false;
+    void loadYouTubeApi().then(() => {
+      if (cancelled || !hostRef.current || !window.YT?.Player) return;
+      playerRef.current = new window.YT.Player(hostRef.current, {
+        width: "100%",
+        height: "100%",
+        videoId: "",
+        playerVars: {
+          autoplay: 1,
+          controls: 0,
+          rel: 0,
+          enablejsapi: 1,
+          modestbranding: 1,
+          iv_load_policy: 3,
+          fs: 0,
+          disablekb: 1,
+          playsinline: 1,
+          origin: window.location.origin,
+        },
+        events: {
+          onReady: () => {
+            readyRef.current = true;
+            playerRef.current?.setVolume(targetVolumeRef.current);
+            const pending = pendingRef.current;
+            if (pending) {
+              pendingRef.current = null;
+              playTrack(pending.videoId, pending.title);
+            }
+          },
+          onStateChange: (e: { data: number }) => {
+            const state = e.data;
+            if (state === 1) {
+              // PLAYING
+              setLoading(false);
+              setNeedsAudioClick(false);
+              bufferingSinceRef.current = 0;
+              progressRef.current.playing = true;
+              endedSentRef.current = false;
+            } else if (state === 3) {
+              // BUFFERING
+              if (!bufferingSinceRef.current) bufferingSinceRef.current = Date.now();
+              progressRef.current.playing = false;
+            } else if (state === 0) {
+              // ENDED
+              progressRef.current.playing = false;
+              if (!endedSentRef.current && currentRef.current.videoId) {
+                endedSentRef.current = true;
+                writeEvent("ended");
+              }
+            } else {
+              progressRef.current.playing = false;
+            }
+          },
+          onError: (e: { data: number }) => {
+            failCurrent(e.data);
+          },
+        },
+      });
+    });
+    return () => {
+      cancelled = true;
+      try {
+        playerRef.current?.destroy();
+      } catch {
+        /* ya destruido */
+      }
+      playerRef.current = null;
+      readyRef.current = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const activateAudio = () => {
-    sendActive("unMute");
-    sendActive("setVolume", [targetVolumeRef.current]);
-    sendActive("playVideo");
+    playerRef.current?.unMute();
+    playerRef.current?.setVolume(targetVolumeRef.current);
+    playerRef.current?.playVideo();
     setNeedsAudioClick(false);
   };
 
@@ -380,10 +391,8 @@ function PlayerScreen() {
     };
   }, []);
 
-
-  // Sincronización dual: evento 'storage' (principal) + BroadcastChannel (respaldo)
+  // Sincronización con la consola + latido de estado
   useEffect(() => {
-    crossfadeRef.current = readCrossfade();
     const savedVolume = window.localStorage.getItem(VOLUME_STORAGE);
     if (savedVolume != null) {
       const v = Number(savedVolume);
@@ -391,12 +400,12 @@ function PlayerScreen() {
     }
 
     const last = readCommand();
-    if (last) applyCommand(last);
+    if (last) applyCommandRef.current(last);
 
     const onStorage = (e: StorageEvent) => {
       if (e.key === COMMAND_STORAGE && e.newValue) {
         try {
-          applyCommand(JSON.parse(e.newValue) as TvCommand);
+          applyCommandRef.current(JSON.parse(e.newValue) as TvCommand);
         } catch {
           /* json inválido */
         }
@@ -405,15 +414,10 @@ function PlayerScreen() {
         const v = Number(e.newValue);
         if (Number.isFinite(v)) {
           targetVolumeRef.current = v;
-          sendActive("setVolume", [v]);
+          playerRef.current?.setVolume(v);
         }
       }
-      if (e.key === CROSSFADE_STORAGE && e.newValue != null) {
-        crossfadeRef.current = readCrossfade();
-      }
-      if (e.key === MESSAGE_STORAGE) {
-        setMessage(readStoredMessage());
-      }
+      if (e.key === MESSAGE_STORAGE) setMessage(readStoredMessage());
     };
     setMessage(readStoredMessage());
     window.addEventListener("storage", onStorage);
@@ -425,39 +429,38 @@ function PlayerScreen() {
         const data = event.data;
         switch (data.type) {
           case "play_video":
-            applyCommand({
+            applyCommandRef.current({
               action: "PLAY",
               videoId: data.videoId,
               title: data.title,
+              ...(data.requester ? { requester: data.requester } : {}),
+              ...(data.requestType ? { requestType: data.requestType } : {}),
               timestamp: Date.now(),
             });
             break;
           case "play":
-            sendActive("playVideo");
+            playerRef.current?.playVideo();
             break;
           case "pause":
-            sendActive("pauseVideo");
+            playerRef.current?.pauseVideo();
             break;
           case "restart":
-            sendActive("seekTo", [0, true]);
-            sendActive("playVideo");
+            playerRef.current?.seekTo(0, true);
+            playerRef.current?.playVideo();
             break;
           case "seek":
-            sendActive("seekTo", [Math.max(0, data.seconds), true]);
-            sendActive("playVideo");
+            playerRef.current?.seekTo(Math.max(0, data.seconds), true);
+            playerRef.current?.playVideo();
             break;
           case "volume":
             targetVolumeRef.current = data.volume;
-            sendActive("setVolume", [data.volume]);
-            break;
-          case "crossfade":
-            crossfadeRef.current = data.ms;
+            playerRef.current?.setVolume(data.volume);
             break;
           case "message":
             setMessage(data.text);
             break;
           case "clear":
-            applyCommand({ action: "CLEAR", timestamp: Date.now() });
+            applyCommandRef.current({ action: "CLEAR", timestamp: Date.now() });
             break;
           default:
             break;
@@ -465,155 +468,46 @@ function PlayerScreen() {
       };
     }
 
-    // Mensajes de los iframes de YouTube (progreso, estado, errores)
-    const onMessage = (e: MessageEvent) => {
-      if (typeof e.origin !== "string" || !e.origin.includes("youtube.com")) return;
-      if (typeof e.data !== "string") return;
-      const fromActive =
-        e.source === deckRefs[activeDeckRef.current].current?.contentWindow;
-      try {
-        const data = JSON.parse(e.data) as {
-          event?: string;
-          info?: {
-            currentTime?: number;
-            duration?: number;
-            playerState?: number;
-          };
-        };
-        if (data.event === "infoDelivery" && data.info && fromActive) {
-          const { currentTime, duration, playerState } = data.info;
-          if (typeof currentTime === "number") progressRef.current.currentTime = currentTime;
-          if (typeof duration === "number" && duration > 1)
-            progressRef.current.duration = duration;
-          if (typeof playerState === "number") {
-            progressRef.current.playing = playerState === 1;
-            if (playerState === 1) {
-              setNeedsAudioClick(false);
-              endedSentRef.current = false;
-            }
-            if (
-              playerState === 0 &&
-              !endedSentRef.current &&
-              decksRef.current[activeDeckRef.current].videoId
-            ) {
-              endedSentRef.current = true;
-              writeEvent("ended");
-            }
-          }
-        }
-        if (data.event === "onError" && typeof data.info === "number") {
-          const code = data.info;
-          const idx = activeDeckRef.current;
-          const activeState = decksRef.current[idx];
-          const errorTitle = activeState.title || activeState.videoId;
-          const restricted = code === 101 || code === 150 || code === 5;
-
-          // La TV nunca muestra el error de YouTube: se oculta el iframe y se
-          // avisa solo al panel de DJ, que decide la siguiente pista.
-          if (restricted) {
-            setEmbedError(null);
-          } else {
-            setEmbedError(`Error de reproducción (código ${code})`);
-            window.setTimeout(() => setEmbedError(null), 1000);
-          }
-
-          clearTimers();
-          sendDeck(idx, "pauseVideo");
-          setDecks((prev) => {
-            const copy: [DeckState, DeckState] = [prev[0], prev[1]];
-            copy[idx] = { videoId: "", title: "" };
-            decksRef.current = copy;
-            return copy;
-          });
-
-          writeEvent("embed_error", {
-            code,
-            title: errorTitle,
-            videoId: activeState.videoId,
-          });
-          channelRef.current?.postMessage({
-            type: "embed_error",
-            videoId: activeState.videoId,
-            title: errorTitle,
-            code,
-          } satisfies TvMessage);
-        }
-      } catch {
-        /* mensaje no json */
-      }
-    };
-    window.addEventListener("message", onMessage);
-
-    // Progreso + latido + recorte de silencio final
     const interval = window.setInterval(() => {
       setMessage((prev) => {
         const stored = readStoredMessage();
         return stored === prev ? prev : stored;
       });
 
-      // Reafirma el handshake con la API de los iframes: sin él nunca llega
-      // 'infoDelivery' y la consola se queda con duración 0 (--:--).
-      ([0, 1] as const).forEach((idx) => {
-        if (!decksRef.current[idx].videoId) return;
-        deckRefs[idx].current?.contentWindow?.postMessage(
-          JSON.stringify({ event: "listening", id: idx, channel: "widget" }),
-          "*",
-        );
-      });
+      const player = playerRef.current;
+      if (player && readyRef.current && currentRef.current.videoId) {
+        try {
+          const duration = player.getDuration() || 0;
+          const currentTime = player.getCurrentTime() || 0;
+          const state = player.getPlayerState();
+          if (duration > 1) progressRef.current.duration = duration;
+          if (currentTime >= 0) progressRef.current.currentTime = currentTime;
+          progressRef.current.playing = state === 1;
 
-      const { duration, currentTime } = progressRef.current;
-      const remaining = duration - currentTime;
-      if (
-        duration > 5 &&
-        remaining <= TAIL_TRIM_SECONDS &&
-        !endedSentRef.current &&
-        decksRef.current[activeDeckRef.current].videoId
-      ) {
-        endedSentRef.current = true;
-        writeEvent("ended");
-      }
+          // Buffering atascado más de 6 s: forzar reproducción.
+          if (state === 3) {
+            if (!bufferingSinceRef.current) bufferingSinceRef.current = Date.now();
+            else if (Date.now() - bufferingSinceRef.current > 6000) {
+              bufferingSinceRef.current = Date.now();
+              player.playVideo();
+            }
+          } else {
+            bufferingSinceRef.current = 0;
+          }
 
-      // --- Vigilancia de atascos (video "cargando" y nunca arranca) ---
-      const activeIdx = activeDeckRef.current;
-      const activeVideo = decksRef.current[activeIdx].videoId;
-      if (!activeVideo || endedSentRef.current) {
-        stallRef.current.lastTime = -1;
-        stallRef.current.ticks = 0;
-      } else {
-        const advanced =
-          progressRef.current.playing && currentTime > stallRef.current.lastTime + 0.05;
-        if (advanced) {
-          stallRef.current.lastTime = currentTime;
-          stallRef.current.ticks = 0;
-          stallRef.current.reloads = 0;
-        } else {
-          stallRef.current.lastTime = Math.max(stallRef.current.lastTime, currentTime);
-          stallRef.current.ticks += 1;
-          const t = stallRef.current.ticks;
-          if (t === 6) {
-            // 3 s sin avance: reintenta reproducir.
-            sendDeck(activeIdx, "playVideo");
-            sendDeck(activeIdx, "unMute");
-            sendDeck(activeIdx, "setVolume", [targetVolumeRef.current]);
-          } else if (t === 14 && stallRef.current.reloads < 2) {
-            // 7 s: recarga forzada del iframe del deck activo.
-            stallRef.current.reloads += 1;
-            stallRef.current.ticks = 0;
-            setReloadNonce((prev) => {
-              const copy: [number, number] = [prev[0], prev[1]];
-              copy[activeIdx] += 1;
-              return copy;
-            });
-          } else if (t >= 24) {
-            // Sigue trabado: saltar a la siguiente pista.
+          // Recorte del silencio final.
+          if (
+            duration > 5 &&
+            duration - currentTime <= TAIL_TRIM_SECONDS &&
+            !endedSentRef.current
+          ) {
             endedSentRef.current = true;
-            stallRef.current.ticks = 0;
             writeEvent("ended");
           }
+        } catch {
+          /* reproductor no listo */
         }
       }
-
-
 
       writeEvent("heartbeat");
       channelRef.current?.postMessage({
@@ -621,64 +515,23 @@ function PlayerScreen() {
         duration: progressRef.current.duration,
         currentTime: progressRef.current.currentTime,
         playing: progressRef.current.playing,
-        deck: activeDeckRef.current === 0 ? "A" : "B",
+        deck: "A",
       } satisfies TvMessage);
     }, 500);
 
     return () => {
       window.removeEventListener("storage", onStorage);
-      window.removeEventListener("message", onMessage);
       window.clearInterval(interval);
-      clearTimers();
       if (channel) {
         channel.onmessage = null;
         channel.close();
       }
       channelRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [applyCommand, clearTimers, sendActive, writeEvent]);
-
-  // Habilitar el canal de datos de cada deck al cambiar su vídeo o al recargarlo
-  useEffect(() => {
-    const timers: number[] = [];
-    ([0, 1] as const).forEach((idx) => {
-      if (!decks[idx].videoId) return;
-      timers.push(
-        window.setTimeout(() => {
-          deckRefs[idx].current?.contentWindow?.postMessage(
-            JSON.stringify({ event: "listening" }),
-            "*",
-          );
-          if (idx === activeDeckRef.current) {
-            sendDeck(idx, "playVideo");
-            sendDeck(idx, "unMute");
-            sendDeck(idx, "setVolume", [targetVolumeRef.current]);
-          }
-        }, 1200),
-      );
-    });
-    timers.push(
-      window.setTimeout(() => {
-        if (
-          decksRef.current[activeDeckRef.current].videoId &&
-          !progressRef.current.playing
-        ) {
-          setNeedsAudioClick(true);
-        }
-      }, 4000),
-    );
-    return () => timers.forEach((t) => window.clearTimeout(t));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [decks[0].videoId, decks[1].videoId, reloadNonce[0], reloadNonce[1]]);
-
-
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const anyVideo = decks[0].videoId || decks[1].videoId;
+  }, [writeEvent]);
 
   return (
     <div className="fixed inset-0 m-0 h-screen max-h-full w-screen max-w-full overflow-hidden bg-black p-0">
-      {/* Dos decks superpuestos: el activo visible, el otro precargado y mudo. */}
       <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
         <div
           className="relative overflow-hidden"
@@ -689,35 +542,19 @@ function PlayerScreen() {
             maxHeight: "100%",
           }}
         >
-          {([0, 1] as const).map((idx) =>
-            decks[idx].videoId ? (
-              <iframe
-                key={`deck-${idx}-${decks[idx].videoId}-${reloadNonce[idx]}`}
-                ref={deckRefs[idx]}
-                src={embedUrl(decks[idx].videoId, origin)}
-                title={decks[idx].title || `Deck ${deckLabel(idx)}`}
-                className="pointer-events-none absolute inset-0 h-full w-full border-0"
-                style={{
-                  opacity: opacities[idx],
-                  zIndex: activeDeck === idx ? 2 : 1,
-                }}
-                allow={IFRAME_ALLOW}
-                allowFullScreen
-              />
-            ) : null,
-          )}
+          <div
+            ref={hostRef}
+            className="pointer-events-none absolute inset-0 h-full w-full"
+          />
         </div>
       </div>
 
-
-      {embedError && (
-        <div className="pointer-events-none absolute inset-x-0 top-6 z-20 flex justify-center px-6 md:top-10 md:px-10">
-
-          <p className="rounded-full border border-red-500/40 bg-red-950/80 px-6 py-3 text-sm font-semibold text-red-200 backdrop-blur-md">
-            {embedError}
-          </p>
-        </div>
-      )}
+      {/* Velo de carga: se oculta en cuanto el video empieza a sonar. */}
+      <div
+        className={`pointer-events-none absolute inset-0 z-10 bg-black transition-opacity duration-500 ${
+          hasVideo && loading ? "opacity-100" : "opacity-0"
+        }`}
+      />
 
       {needsAudioClick && (
         <button
@@ -734,7 +571,7 @@ function PlayerScreen() {
         </button>
       )}
 
-      {!anyVideo && (
+      {!hasVideo && (
         <div className="absolute inset-0 z-10 overflow-hidden">
           <div className="tv-idle-bg absolute inset-0" />
           <div className="absolute inset-0 flex items-center justify-center">
@@ -754,8 +591,6 @@ function PlayerScreen() {
           </p>
         </div>
       )}
-
-
 
       <button
         type="button"
@@ -781,12 +616,10 @@ function PlayerScreen() {
       )}
 
       {message && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 px-6 pb-6 md:px-10 md:pb-10">
-          <div className="tv-ticker mx-auto max-w-6xl rounded-2xl border border-white/15 bg-black/70 px-8 py-5 backdrop-blur-md md:px-12 md:py-6">
-            <p className="text-center text-3xl font-bold leading-tight text-white drop-shadow-lg md:text-5xl">
-              {message}
-            </p>
-          </div>
+        <div className="pointer-events-none absolute inset-x-0 bottom-24 z-20 flex justify-center px-6">
+          <p className="rounded-full bg-black/75 px-8 py-4 text-3xl font-bold text-white drop-shadow-lg backdrop-blur-md md:text-5xl">
+            {message}
+          </p>
         </div>
       )}
     </div>
