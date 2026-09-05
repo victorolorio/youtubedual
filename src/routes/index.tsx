@@ -785,7 +785,7 @@ function Dashboard() {
   const remove = (id: string) => setQueue((q) => q.filter((t) => t.id !== id));
 
   return (
-    <main className="flex h-screen w-screen flex-col gap-4 overflow-hidden bg-background p-4 text-foreground">
+    <main className="flex min-h-screen w-full flex-col gap-4 bg-background p-4 text-foreground">
       <header className="flex shrink-0 flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary">
@@ -821,8 +821,8 @@ function Dashboard() {
         </div>
       </header>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-        <div className="flex min-h-0 flex-col gap-4 overflow-y-auto pr-1 scrollbar-thin">
+      <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+        <div className="flex min-w-0 flex-col gap-4">
 
 
         <section className="panel-surface rounded-2xl p-5">
@@ -1157,7 +1157,7 @@ function Dashboard() {
         </section>
         </div>
 
-        <div className="min-w-0 space-y-6 lg:sticky lg:top-6">
+        <div className="flex min-w-0 flex-col gap-4">
         <section className="panel-surface rounded-2xl p-5">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
@@ -1280,9 +1280,9 @@ function Dashboard() {
             ))}
           </ul>
         </section>
-        </div>
 
-        <aside className="panel-surface h-fit min-h-0 overflow-y-auto rounded-2xl p-5 scrollbar-thin">
+
+        <section className="panel-surface rounded-2xl p-5">
 
           <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
             Cola de reproducción
@@ -1307,7 +1307,7 @@ function Dashboard() {
           </form>
           {status && <p className="mt-2 text-xs text-muted-foreground">{status}</p>}
 
-          <ul className="mt-4 max-h-[300px] space-y-2 overflow-y-auto pr-2 scrollbar-thin">
+          <ul className="mt-4 max-h-[380px] space-y-2 overflow-y-auto pr-2 scrollbar-thin">
             {queue.length === 0 && (
               <li className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
                 La cola está vacía. Agrega la primera canción.
@@ -1430,7 +1430,8 @@ function Dashboard() {
               </ul>
             )}
           </div>
-        </aside>
+        </section>
+        </div>
       </div>
 
 
