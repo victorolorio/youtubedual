@@ -228,6 +228,17 @@ function PlayerScreen() {
       setEmbedError(null);
       endedSentRef.current = false;
       stallRef.current = { lastTime: -1, ticks: 0, reloads: 0 };
+      // Nueva pista: el tiempo y la duración vuelven a cero hasta que el
+      // reproductor confirme los datos reales.
+      progressRef.current = { duration: 0, currentTime: 0, playing: false };
+      writeEvent("heartbeat");
+      channelRef.current?.postMessage({
+        type: "state",
+        duration: 0,
+        currentTime: 0,
+        playing: false,
+        deck: activeDeckRef.current === 0 ? "A" : "B",
+      } satisfies TvMessage);
 
 
       setDecks((prev) => {
@@ -472,7 +483,8 @@ function PlayerScreen() {
         if (data.event === "infoDelivery" && data.info && fromActive) {
           const { currentTime, duration, playerState } = data.info;
           if (typeof currentTime === "number") progressRef.current.currentTime = currentTime;
-          if (typeof duration === "number") progressRef.current.duration = duration;
+          if (typeof duration === "number" && duration > 1)
+            progressRef.current.duration = duration;
           if (typeof playerState === "number") {
             progressRef.current.playing = playerState === 1;
             if (playerState === 1) {
