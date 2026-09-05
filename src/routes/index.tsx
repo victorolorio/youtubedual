@@ -649,6 +649,12 @@ function Dashboard() {
     const playing = currentRef.current;
     if (playing) {
       setHistory((h) => [playing, ...h.filter((t) => t.id !== playing.id)].slice(0, 30));
+      if (playing.requestId) {
+        void supabase
+          .from("karaoke_requests")
+          .update({ status: "played" })
+          .eq("id", playing.requestId);
+      }
     }
 
     // Actualización funcional: nunca se vacía la cola, solo se extrae la cabeza.
