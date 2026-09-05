@@ -1,6 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
-import { Check, ListMusic, Loader2, Lock, Music4, Plus, Search, Trash2 } from "lucide-react";
+import {
+  Check,
+  ListMusic,
+  Loader2,
+  Lock,
+  LogOut,
+  Music4,
+  Plus,
+  Search,
+  Trash2,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,7 +64,76 @@ const STATUS_LABEL: Record<string, string> = {
   approved: "Aprobado",
   playing: "Sonando",
   rejected: "Rechazado",
+  played: "Ya sonó",
+  completed: "Ya sonó",
 };
+
+/** Estados considerados finalizados: se agrupan en el acordeón de historial. */
+const DONE_STATUSES = ["played", "completed", "rejected"];
+const HIDDEN_STORAGE = "pedir_historial_oculto";
+
+function RequestCard({
+  row: r,
+  cancelling,
+  onCancel,
+}: {
+  row: RequestRow;
+  cancelling: boolean;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="flex gap-3 rounded-2xl border border-border bg-card p-3">
+      <img
+        src={r.thumbnail_url}
+        alt={`Miniatura de ${r.song_title}`}
+        loading="lazy"
+        className="h-14 w-24 shrink-0 rounded-lg object-cover"
+      />
+      <div className="min-w-0 flex-1">
+        <p className="line-clamp-2 text-sm font-medium">{r.song_title}</p>
+        <div className="mt-1 flex flex-wrap items-center gap-2">
+          <span
+            className={`inline-block rounded-full px-3 py-1 text-xs ${
+              r.status === "approved" || r.status === "playing"
+                ? "bg-emerald-500/20 text-emerald-300"
+                : "bg-secondary text-secondary-foreground"
+            }`}
+          >
+            {r.status === "approved" || r.status === "playing"
+              ? "Aprobado — Esperando turno en cabina"
+              : (STATUS_LABEL[r.status] ?? r.status)}
+          </span>
+          <span
+            className={`inline-block rounded-full px-3 py-1 text-[10px] font-bold uppercase ${
+              r.request_type === "music_video"
+                ? "bg-cyan-500/20 text-cyan-300"
+                : "bg-violet-500/20 text-violet-300"
+            }`}
+          >
+            {r.request_type === "music_video" ? "🎬 Video" : "🎤 Karaoke"}
+          </span>
+        </div>
+        {r.status === "pending" && (
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="mt-2 h-8 px-2 text-xs text-muted-foreground hover:text-destructive"
+            disabled={cancelling}
+            onClick={onCancel}
+          >
+            {cancelling ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Trash2 className="size-4" />
+            )}
+            Cancelar pedido
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function RequestPage() {
   const [name, setName] = useState("");
@@ -70,6 +149,8 @@ function RequestPage() {
   const [requestType, setRequestType] = useState<RequestType>("karaoke");
   const [sending, setSending] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState<string | null>(null);
+  const [hiddenIds, setHiddenIds] = useState<string[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const { settings, loading: settingsLoading } = useKaraokeSettings();
   const [pinDraft, setPinDraft] = useState("");
   const [pinOk, setPinOk] = useState(false);
@@ -99,6 +180,12 @@ function RequestPage() {
     setApiKey(fromUrl ?? window.localStorage.getItem(KEY_STORAGE) ?? "");
     const savedType = window.localStorage.getItem(TYPE_STORAGE);
     if (savedType === "music_video" || savedType === "karaoke") setRequestType(savedType);
+    try {
+      const savedHidden = JSON.parse(window.localStorage.getItem(HIDDEN_STORAGE) ?? "[]");
+      if (Array.isArray(savedHidden)) setHiddenIds(savedHidden as string[]);
+    } catch {
+      /* historial local corrupto: se ignora */
+    }
   }, []);
 
   const loadMine = useCallback(async (who: string) => {
@@ -129,6 +216,35 @@ function RequestPage() {
   }, [name, loadMine]);
 
   const pendingCount = mine.filter((r) => r.status === "pending").length;
+  const visible = mine.filter((r) => !hiddenIds.includes(r.id));
+  const activeRequests = visible.filter((r) => !DONE_STATUSES.includes(r.status));
+  const doneRequests = visible.filter((r) => DONE_STATUSES.includes(r.status));
+
+  /** Oculta solo lo ya finalizado; nunca toca pedidos en espera o aprobados. */
+  const clearHistory = () => {
+    const ids = mine.filter((r) => DONE_STATUSES.includes(r.status)).map((r) => r.id);
+    if (ids.length === 0) return;
+    setHiddenIds((prev) => {
+      const nextIds = Array.from(new Set([...prev, ...ids]));
+      window.localStorage.setItem(HIDDEN_STORAGE, JSON.stringify(nextIds));
+      return nextIds;
+    });
+  };
+
+  /** Nueva sesión: borra los datos guardados en este celular. */
+  const changeTable = () => {
+    if (!window.confirm("¿Salir y liberar esta mesa para otro cliente?")) return;
+    window.localStorage.removeItem(NAME_STORAGE);
+    window.localStorage.removeItem(HIDDEN_STORAGE);
+    window.localStorage.removeItem(TYPE_STORAGE);
+    window.localStorage.removeItem(PIN_SESSION_STORAGE);
+    setHiddenIds([]);
+    setMine([]);
+    setNameDraft("");
+    setName("");
+    setPinOk(false);
+    setTab("buscar");
+  };
 
   const cancelRequest = async (id: string) => {
     if (!window.confirm("¿Deseas cancelar esta petición?")) return;
@@ -302,9 +418,21 @@ function RequestPage() {
 
   return (
     <main className="min-h-screen bg-background pb-24">
-      <header className="sticky top-0 z-10 border-b border-border bg-background/90 px-4 py-3 backdrop-blur">
-        <h1 className="text-lg font-bold">Karaoke en vivo</h1>
-        <p className="text-xs text-muted-foreground">Pidiendo como {name}</p>
+      <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-border bg-background/90 px-4 py-3 backdrop-blur">
+        <div className="min-w-0">
+          <h1 className="text-lg font-bold">Karaoke en vivo</h1>
+          <p className="truncate text-xs text-muted-foreground">Pidiendo como {name}</p>
+        </div>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="h-8 shrink-0 px-2 text-xs"
+          onClick={changeTable}
+        >
+          <LogOut className="size-4" />
+          Cambiar mesa
+        </Button>
       </header>
 
       {tab === "buscar" ? (
@@ -386,64 +514,57 @@ function RequestPage() {
         </section>
       ) : (
         <section className="space-y-3 px-4 py-4">
-          {mine.length === 0 && (
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold">Mis Pedidos</h2>
+            {doneRequests.length > 0 && (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-8 px-2 text-xs text-muted-foreground"
+                onClick={clearHistory}
+              >
+                <Trash2 className="size-4" />
+                Limpiar historial
+              </Button>
+            )}
+          </div>
+
+          {visible.length === 0 && (
             <p className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
               Todavía no has pedido canciones.
             </p>
           )}
-          {mine.map((r) => (
-            <div key={r.id} className="flex gap-3 rounded-2xl border border-border bg-card p-3">
-              <img
-                src={r.thumbnail_url}
-                alt={`Miniatura de ${r.song_title}`}
-                loading="lazy"
-                className="h-14 w-24 shrink-0 rounded-lg object-cover"
-              />
-              <div className="min-w-0 flex-1">
-                <p className="line-clamp-2 text-sm font-medium">{r.song_title}</p>
-                <div className="mt-1 flex flex-wrap items-center gap-2">
-                  <span
-                    className={`inline-block rounded-full px-3 py-1 text-xs ${
-                      r.status === "approved" || r.status === "playing"
-                        ? "bg-emerald-500/20 text-emerald-300"
-                        : "bg-secondary text-secondary-foreground"
-                    }`}
-                  >
-                    {r.status === "approved" || r.status === "playing"
-                      ? "Aprobado — Esperando turno en cabina"
-                      : (STATUS_LABEL[r.status] ?? r.status)}
-                  </span>
-                  <span
-                    className={`inline-block rounded-full px-3 py-1 text-[10px] font-bold uppercase ${
-                      r.request_type === "music_video"
-                        ? "bg-cyan-500/20 text-cyan-300"
-                        : "bg-violet-500/20 text-violet-300"
-                    }`}
-                  >
-                    {r.request_type === "music_video" ? "🎬 Video" : "🎤 Karaoke"}
-                  </span>
-                </div>
-                {r.status === "pending" && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    className="mt-2 h-8 px-2 text-xs text-muted-foreground hover:text-destructive"
-                    disabled={cancelling === r.id}
-                    onClick={() => void cancelRequest(r.id)}
-                  >
-                    {cancelling === r.id ? (
-                      <Loader2 className="size-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="size-4" />
-                    )}
-                    Cancelar pedido
-                  </Button>
-                )}
-              </div>
 
-            </div>
+          {activeRequests.map((r) => (
+            <RequestCard
+              key={r.id}
+              row={r}
+              cancelling={cancelling === r.id}
+              onCancel={() => void cancelRequest(r.id)}
+            />
           ))}
+
+          {doneRequests.length > 0 && (
+            <div className="rounded-2xl border border-border bg-card/50">
+              <button
+                type="button"
+                onClick={() => setHistoryOpen((o) => !o)}
+                className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-muted-foreground"
+                aria-expanded={historyOpen}
+              >
+                Historial de canciones sonadas ({doneRequests.length})
+                <span aria-hidden>{historyOpen ? "▲" : "▼"}</span>
+              </button>
+              {historyOpen && (
+                <div className="space-y-3 px-3 pb-3">
+                  {doneRequests.map((r) => (
+                    <RequestCard key={r.id} row={r} cancelling={false} onCancel={() => {}} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </section>
       )}
 
