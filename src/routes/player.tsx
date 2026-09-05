@@ -228,6 +228,17 @@ function PlayerScreen() {
       setEmbedError(null);
       endedSentRef.current = false;
       stallRef.current = { lastTime: -1, ticks: 0, reloads: 0 };
+      // Nueva pista: el tiempo y la duración vuelven a cero hasta que el
+      // reproductor confirme los datos reales.
+      progressRef.current = { duration: 0, currentTime: 0, playing: false };
+      writeEvent("heartbeat");
+      channelRef.current?.postMessage({
+        type: "state",
+        duration: 0,
+        currentTime: 0,
+        playing: false,
+        deck: activeDeckRef.current === 0 ? "A" : "B",
+      } satisfies TvMessage);
 
 
       setDecks((prev) => {
