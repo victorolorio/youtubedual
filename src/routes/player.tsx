@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { useKaraokeSettings } from "@/lib/karaoke-settings";
 import {
   COMMAND_STORAGE,
   EVENT_STORAGE,
@@ -127,10 +126,8 @@ function PlayerScreen() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [requester, setRequester] = useState<string | null>(null);
-  const [requesterType, setRequesterType] = useState<string>("karaoke");
   const [needsAudioClick, setNeedsAudioClick] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
-  const { settings } = useKaraokeSettings();
   const requesterTimerRef = useRef<number | null>(null);
 
   /** Escribe un evento para la consola (funciona entre ventanas vía localStorage). */
@@ -195,7 +192,6 @@ function PlayerScreen() {
             if (requesterTimerRef.current) window.clearTimeout(requesterTimerRef.current);
             if (cmd.requester) {
               setRequester(cmd.requester);
-              setRequesterType(cmd.requestType ?? "karaoke");
               requesterTimerRef.current = window.setTimeout(
                 () => setRequester(null),
                 8000,
