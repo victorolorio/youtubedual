@@ -429,64 +429,57 @@ function RequestPage() {
         </section>
       ) : (
         <section className="space-y-3 px-4 py-4">
-          {mine.length === 0 && (
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold">Mis Pedidos</h2>
+            {doneRequests.length > 0 && (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-8 px-2 text-xs text-muted-foreground"
+                onClick={clearHistory}
+              >
+                <Trash2 className="size-4" />
+                Limpiar historial
+              </Button>
+            )}
+          </div>
+
+          {visible.length === 0 && (
             <p className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
               Todavía no has pedido canciones.
             </p>
           )}
-          {mine.map((r) => (
-            <div key={r.id} className="flex gap-3 rounded-2xl border border-border bg-card p-3">
-              <img
-                src={r.thumbnail_url}
-                alt={`Miniatura de ${r.song_title}`}
-                loading="lazy"
-                className="h-14 w-24 shrink-0 rounded-lg object-cover"
-              />
-              <div className="min-w-0 flex-1">
-                <p className="line-clamp-2 text-sm font-medium">{r.song_title}</p>
-                <div className="mt-1 flex flex-wrap items-center gap-2">
-                  <span
-                    className={`inline-block rounded-full px-3 py-1 text-xs ${
-                      r.status === "approved" || r.status === "playing"
-                        ? "bg-emerald-500/20 text-emerald-300"
-                        : "bg-secondary text-secondary-foreground"
-                    }`}
-                  >
-                    {r.status === "approved" || r.status === "playing"
-                      ? "Aprobado — Esperando turno en cabina"
-                      : (STATUS_LABEL[r.status] ?? r.status)}
-                  </span>
-                  <span
-                    className={`inline-block rounded-full px-3 py-1 text-[10px] font-bold uppercase ${
-                      r.request_type === "music_video"
-                        ? "bg-cyan-500/20 text-cyan-300"
-                        : "bg-violet-500/20 text-violet-300"
-                    }`}
-                  >
-                    {r.request_type === "music_video" ? "🎬 Video" : "🎤 Karaoke"}
-                  </span>
-                </div>
-                {r.status === "pending" && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    className="mt-2 h-8 px-2 text-xs text-muted-foreground hover:text-destructive"
-                    disabled={cancelling === r.id}
-                    onClick={() => void cancelRequest(r.id)}
-                  >
-                    {cancelling === r.id ? (
-                      <Loader2 className="size-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="size-4" />
-                    )}
-                    Cancelar pedido
-                  </Button>
-                )}
-              </div>
 
-            </div>
+          {activeRequests.map((r) => (
+            <RequestCard
+              key={r.id}
+              row={r}
+              cancelling={cancelling === r.id}
+              onCancel={() => void cancelRequest(r.id)}
+            />
           ))}
+
+          {doneRequests.length > 0 && (
+            <div className="rounded-2xl border border-border bg-card/50">
+              <button
+                type="button"
+                onClick={() => setHistoryOpen((o) => !o)}
+                className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-muted-foreground"
+                aria-expanded={historyOpen}
+              >
+                Historial de canciones sonadas ({doneRequests.length})
+                <span aria-hidden>{historyOpen ? "▲" : "▼"}</span>
+              </button>
+              {historyOpen && (
+                <div className="space-y-3 px-3 pb-3">
+                  {doneRequests.map((r) => (
+                    <RequestCard key={r.id} row={r} cancelling={false} onCancel={() => {}} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </section>
       )}
 
