@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { useKaraokeSettings } from "@/lib/karaoke-settings";
 import {
   COMMAND_STORAGE,
   EVENT_STORAGE,
@@ -127,10 +126,8 @@ function PlayerScreen() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [requester, setRequester] = useState<string | null>(null);
-  const [requesterType, setRequesterType] = useState<string>("karaoke");
   const [needsAudioClick, setNeedsAudioClick] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
-  const { settings } = useKaraokeSettings();
   const requesterTimerRef = useRef<number | null>(null);
 
   /** Escribe un evento para la consola (funciona entre ventanas vía localStorage). */
@@ -195,7 +192,6 @@ function PlayerScreen() {
             if (requesterTimerRef.current) window.clearTimeout(requesterTimerRef.current);
             if (cmd.requester) {
               setRequester(cmd.requester);
-              setRequesterType(cmd.requestType ?? "karaoke");
               requesterTimerRef.current = window.setTimeout(
                 () => setRequester(null),
                 8000,
@@ -582,16 +578,6 @@ function PlayerScreen() {
         </div>
       )}
 
-      {settings?.requests_open && settings.daily_pin && (
-        <div className="pointer-events-none absolute bottom-6 left-6 z-20 rounded-xl border border-white/15 bg-black/55 px-4 py-2 backdrop-blur-md">
-          <p className="text-xs uppercase tracking-widest text-white/70 md:text-sm">
-            Pide tu tema escaneando el QR
-            <span className="mx-2 text-white/30">|</span>
-            PIN de hoy: <span className="font-bold text-white">{settings.daily_pin}</span>
-          </p>
-        </div>
-      )}
-
       <button
         type="button"
         onClick={toggleFullscreen}
@@ -607,13 +593,12 @@ function PlayerScreen() {
         <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex justify-center px-6 pt-6 md:pt-10">
           <div className="tv-ticker rounded-2xl border border-primary/40 bg-black/70 px-8 py-4 backdrop-blur-md md:px-12 md:py-5">
             <p className="text-center text-2xl font-bold text-white drop-shadow-lg md:text-4xl">
-              {requesterType === "music_video"
-                ? `🎵 Sonando por petición de: ${requester}`
-                : `🎤 Turno de Karaoke: ${requester}`}
+              {`🎵 Petición de: ${requester}`}
             </p>
           </div>
         </div>
       )}
+
 
       {message && (
         <div className="pointer-events-none absolute inset-x-0 bottom-24 z-20 flex justify-center px-6">
