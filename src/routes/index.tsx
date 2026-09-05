@@ -305,8 +305,8 @@ function Dashboard() {
     const handleEvent = (ev: TvEvent) => {
       lastAliveRef.current = ev.timestamp;
       setTvOnline(true);
-      setDuration(ev.duration);
-      setElapsed(ev.currentTime);
+      setDuration(Number.isFinite(ev.duration) && ev.duration > 1 ? ev.duration : 0);
+      setElapsed(Number.isFinite(ev.currentTime) && ev.currentTime > 0 ? ev.currentTime : 0);
       setIsPlaying(ev.playing);
       if (ev.deck) setActiveDeck(ev.deck);
 
@@ -349,8 +349,14 @@ function Dashboard() {
       if (data.type === "state") {
         lastAliveRef.current = Date.now();
         setTvOnline(true);
-        setDuration(data.duration);
-        setElapsed(data.currentTime);
+        setDuration(
+          Number.isFinite(data.duration) && data.duration > 1 ? data.duration : 0,
+        );
+        setElapsed(
+          Number.isFinite(data.currentTime) && data.currentTime > 0
+            ? data.currentTime
+            : 0,
+        );
         setIsPlaying(data.playing);
         if (data.deck) setActiveDeck(data.deck);
 
@@ -938,7 +944,9 @@ function Dashboard() {
               {current ? current.title : "Sin reproducción"}
             </p>
             <p className="font-mono text-sm text-primary">
-              {formatTime(elapsed)} / {formatTime(duration)}
+              {duration > 1
+                ? `${formatTime(elapsed)} / ${formatTime(duration)}`
+                : "0:00 / Cargando…"}
             </p>
           </div>
           <div className="mt-4">
@@ -947,14 +955,14 @@ function Dashboard() {
               min={0}
               max={Math.max(1, Math.floor(duration))}
               step={1}
-              value={Math.min(Math.floor(elapsed), Math.max(1, Math.floor(duration)))}
-              disabled={duration <= 0}
+              value={duration > 1 ? Math.min(Math.floor(elapsed), Math.floor(duration)) : 0}
+              disabled={duration <= 1}
               aria-label="Barra de tiempo"
               onChange={(e) => seekTo(Number(e.target.value))}
               className="h-2 w-full cursor-pointer appearance-none rounded-full bg-secondary accent-primary disabled:cursor-not-allowed disabled:opacity-50"
               style={{
                 backgroundImage: `linear-gradient(to right, var(--color-primary) ${
-                  duration > 0 ? (elapsed / duration) * 100 : 0
+                  duration > 1 ? Math.min(100, (elapsed / duration) * 100) : 0
                 }%, var(--color-secondary) 0%)`,
               }}
             />
