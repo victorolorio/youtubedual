@@ -54,7 +54,13 @@ const STATUS_LABEL: Record<string, string> = {
   approved: "Aprobado",
   playing: "Sonando",
   rejected: "Rechazado",
+  played: "Ya sonó",
+  completed: "Ya sonó",
 };
+
+/** Estados considerados finalizados: se agrupan en el acordeón de historial. */
+const DONE_STATUSES = ["played", "completed", "rejected"];
+const HIDDEN_STORAGE = "pedir_historial_oculto";
 
 function RequestPage() {
   const [name, setName] = useState("");
