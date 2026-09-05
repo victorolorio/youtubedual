@@ -1431,11 +1431,8 @@ function Dashboard() {
             )}
           </div>
         </aside>
-        </div>
-
-        </div>
-
       </div>
+
 
       {settingsOpen ? (
         <div
