@@ -483,7 +483,8 @@ function PlayerScreen() {
         if (data.event === "infoDelivery" && data.info && fromActive) {
           const { currentTime, duration, playerState } = data.info;
           if (typeof currentTime === "number") progressRef.current.currentTime = currentTime;
-          if (typeof duration === "number") progressRef.current.duration = duration;
+          if (typeof duration === "number" && duration > 1)
+            progressRef.current.duration = duration;
           if (typeof playerState === "number") {
             progressRef.current.playing = playerState === 1;
             if (playerState === 1) {
