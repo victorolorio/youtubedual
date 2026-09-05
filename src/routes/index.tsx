@@ -785,7 +785,7 @@ function Dashboard() {
   const remove = (id: string) => setQueue((q) => q.filter((t) => t.id !== id));
 
   return (
-    <main className="flex min-h-screen flex-col gap-4 bg-background p-4 text-foreground md:h-screen md:overflow-hidden">
+    <main className="flex h-screen w-screen flex-col gap-4 overflow-hidden bg-background p-4 text-foreground">
       <header className="flex shrink-0 flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary">
@@ -891,7 +891,7 @@ function Dashboard() {
           )}
 
           {results.length > 0 && (
-            <ul className="mt-4 space-y-2">
+            <ul className="mt-4 max-h-[260px] space-y-2 overflow-y-auto pr-2 scrollbar-thin">
               {results.map((r) => (
                 <li
                   key={r.videoId}
@@ -1236,7 +1236,7 @@ function Dashboard() {
             </Label>
           </div>
 
-          <ul className="mt-3 space-y-2 max-h-[40vh] overflow-y-auto">
+          <ul className="mt-3 max-h-[220px] space-y-2 overflow-y-auto pr-2 scrollbar-thin">
             {requests.length === 0 && (
               <li className="rounded-xl border border-dashed border-border p-5 text-center text-xs text-muted-foreground">
                 Sin pedidos del público por ahora.
@@ -1307,7 +1307,7 @@ function Dashboard() {
           </form>
           {status && <p className="mt-2 text-xs text-muted-foreground">{status}</p>}
 
-          <ul className="mt-4 space-y-2 lg:max-h-[60vh] lg:overflow-y-auto">
+          <ul className="mt-4 max-h-[300px] space-y-2 overflow-y-auto pr-2 scrollbar-thin">
             {queue.length === 0 && (
               <li className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
                 La cola está vacía. Agrega la primera canción.
