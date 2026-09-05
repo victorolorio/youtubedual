@@ -408,9 +408,21 @@ function RequestPage() {
 
   return (
     <main className="min-h-screen bg-background pb-24">
-      <header className="sticky top-0 z-10 border-b border-border bg-background/90 px-4 py-3 backdrop-blur">
-        <h1 className="text-lg font-bold">Karaoke en vivo</h1>
-        <p className="text-xs text-muted-foreground">Pidiendo como {name}</p>
+      <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-border bg-background/90 px-4 py-3 backdrop-blur">
+        <div className="min-w-0">
+          <h1 className="text-lg font-bold">Karaoke en vivo</h1>
+          <p className="truncate text-xs text-muted-foreground">Pidiendo como {name}</p>
+        </div>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="h-8 shrink-0 px-2 text-xs"
+          onClick={changeTable}
+        >
+          <LogOut className="size-4" />
+          Cambiar mesa
+        </Button>
       </header>
 
       {tab === "buscar" ? (
