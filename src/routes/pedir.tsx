@@ -69,6 +69,7 @@ function RequestPage() {
   const [sent, setSent] = useState(false);
   const [requestType, setRequestType] = useState<RequestType>("karaoke");
   const [sending, setSending] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState<string | null>(null);
   const { settings, loading: settingsLoading } = useKaraokeSettings();
   const [pinDraft, setPinDraft] = useState("");
   const [pinOk, setPinOk] = useState(false);
