@@ -383,8 +383,16 @@ function RequestPage() {
               <div className="min-w-0 flex-1">
                 <p className="line-clamp-2 text-sm font-medium">{r.song_title}</p>
                 <div className="mt-1 flex flex-wrap items-center gap-2">
-                  <span className="inline-block rounded-full bg-secondary px-3 py-1 text-xs text-secondary-foreground">
-                    {STATUS_LABEL[r.status] ?? r.status}
+                  <span
+                    className={`inline-block rounded-full px-3 py-1 text-xs ${
+                      r.status === "approved" || r.status === "playing"
+                        ? "bg-emerald-500/20 text-emerald-300"
+                        : "bg-secondary text-secondary-foreground"
+                    }`}
+                  >
+                    {r.status === "approved" || r.status === "playing"
+                      ? "Aprobado — Esperando turno en cabina"
+                      : (STATUS_LABEL[r.status] ?? r.status)}
                   </span>
                   <span
                     className={`inline-block rounded-full px-3 py-1 text-[10px] font-bold uppercase ${
@@ -396,7 +404,25 @@ function RequestPage() {
                     {r.request_type === "music_video" ? "🎬 Video" : "🎤 Karaoke"}
                   </span>
                 </div>
+                {r.status === "pending" && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="mt-2 h-8 px-2 text-xs text-muted-foreground hover:text-destructive"
+                    disabled={cancelling === r.id}
+                    onClick={() => void cancelRequest(r.id)}
+                  >
+                    {cancelling === r.id ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="size-4" />
+                    )}
+                    Cancelar pedido
+                  </Button>
+                )}
               </div>
+
             </div>
           ))}
         </section>
