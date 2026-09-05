@@ -1280,8 +1280,10 @@ function Dashboard() {
             ))}
           </ul>
         </section>
+        </div>
 
-        <aside className="panel-surface h-fit rounded-2xl p-5">
+        <aside className="panel-surface h-fit min-h-0 overflow-y-auto rounded-2xl p-5 scrollbar-thin">
+
           <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
             Cola de reproducción
           </h2>
