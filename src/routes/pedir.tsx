@@ -143,6 +143,35 @@ function RequestPage() {
   }, [name, loadMine]);
 
   const pendingCount = mine.filter((r) => r.status === "pending").length;
+  const visible = mine.filter((r) => !hiddenIds.includes(r.id));
+  const activeRequests = visible.filter((r) => !DONE_STATUSES.includes(r.status));
+  const doneRequests = visible.filter((r) => DONE_STATUSES.includes(r.status));
+
+  /** Oculta solo lo ya finalizado; nunca toca pedidos en espera o aprobados. */
+  const clearHistory = () => {
+    const ids = mine.filter((r) => DONE_STATUSES.includes(r.status)).map((r) => r.id);
+    if (ids.length === 0) return;
+    setHiddenIds((prev) => {
+      const nextIds = Array.from(new Set([...prev, ...ids]));
+      window.localStorage.setItem(HIDDEN_STORAGE, JSON.stringify(nextIds));
+      return nextIds;
+    });
+  };
+
+  /** Nueva sesión: borra los datos guardados en este celular. */
+  const changeTable = () => {
+    if (!window.confirm("¿Salir y liberar esta mesa para otro cliente?")) return;
+    window.localStorage.removeItem(NAME_STORAGE);
+    window.localStorage.removeItem(HIDDEN_STORAGE);
+    window.localStorage.removeItem(TYPE_STORAGE);
+    window.localStorage.removeItem(PIN_SESSION_STORAGE);
+    setHiddenIds([]);
+    setMine([]);
+    setNameDraft("");
+    setName("");
+    setPinOk(false);
+    setTab("buscar");
+  };
 
   const cancelRequest = async (id: string) => {
     if (!window.confirm("¿Deseas cancelar esta petición?")) return;
